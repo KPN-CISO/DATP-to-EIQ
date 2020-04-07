@@ -186,7 +186,7 @@ def download(options):
         '''
         if options.verbose:
             print("U) Generating DATP Access Token ...")
-        
+
         body = {
             'resource' : settings.DATPRESOURCEIDURL,
             'client_id' : settings.DATPAPPID,
@@ -197,7 +197,7 @@ def download(options):
         data = urllib.parse.urlencode(body).encode("utf-8")
         req = urllib.request.Request(settings.DATPTOKENURL, data)
         response = urllib.request.urlopen(req)
-        jsonResponse = json.loads(response.read())
+        jsonResponse = json.loads(response.read().decode('utf-8'))
         aadToken = jsonResponse["access_token"]
     except:
         if options.verbose:
