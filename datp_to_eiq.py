@@ -78,6 +78,8 @@ def transform(alerts, options):
                                           classification=classification,
                                           confidence=confidence,
                                           link_type=link_type)
+                else:
+                    computerDnsName = 'an unknown system'
                 if datpEvent['machineId']:
                     machineId = datpEvent['machineId']
                 if datpEvent['investigationState']:
@@ -96,7 +98,7 @@ def transform(alerts, options):
                                           link_type=link_type)
                 else:
                     threatFamilyName = 'an unknown threat type'
-                title = datpEvent['title']
+                title = datpEvent['title'] + ' on ' + computerDnsName
                 description = detectionSource + ' detected a(n) '
                 description += category + ' event caused by the '
                 description += threatFamilyName + ' threat, '
