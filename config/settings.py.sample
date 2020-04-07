@@ -1,0 +1,46 @@
+"""
+Sample settings
+"""
+
+# The following variables are needed to generate a DATP token validity (default:
+# 3600 seconds) and define the time window
+#
+# DATPTENANTID		[Required] replace with your tenant ID
+# DATPAPPID			[Required] replace with your app ID
+# DATPAPPSECRET		[Required] replace with your app secret
+# DATPTOKENURL		[Required] OAuth2 provider for generating token. This is normally
+#					'https://login.windows.net/%s/oauth2/token'
+# DATPRESOURCEIDURL	[Required]
+# DATPAPPIDURL		[Required] AppID URL - usually the URL for a Security Center alerts
+#					API, e.g.: 'https://api.securitycenter.windows.com/api/alerts'
+# DATPTIME			[Required] Time window of alerts to ingest into EIQ (default: 3600)
+# DATPSSLVERIFY		[Required] Verify the SSL connection (default: yes)
+
+DATPTENANTID = '<tenant-id>'
+DATPAPPID = '<app-id>'
+DATPAPPSECRET = '<app-secret>'
+DATPTOKENURL = 'https://login.windows.net/%s/oauth2/token' % (DATPTENANTID)
+DATPRESOURCEIDURL = 'https://api.securitycenter.windows.com'
+DATPAPPIDURL = 'https://api-eu.securitycenter.windows.com/api/alerts'
+DATPTIME = 3600
+DATPSSLVERIFY = True
+
+# Settings for EclecticIQ
+
+# Pick the right URL, e.g.: 'https://myeiqinstance.localdomain'.
+EIQHOST = 'https://myeiqinstance.localdomain'
+# Pick '/api' as the EIQVERSION for EIQ <=2.0.x, and '/private' for EIQ 2.1.x+
+EIQVERSION = '/private'
+# [Required] EIQ username and password:
+EIQUSER = 'eiqautomationuser' 
+EIQPASS = 'eiqautomationpass'
+# [Required] EIQ 'source' UUID.
+# One username can have multiple sources where it can 'ingest data' from.
+# This 'source' can be found through the EIQ webinterface and JSON calls.
+EIQSOURCE = '<eiq-source-uuid>'
+EIQSSLVERIFY = False
+
+# [Required] Choose a prefix/header that will be added to every EIQ entity for easy searches/recognition,
+# and choose the maximum title length of attributes types that describe the content of indicators
+TITLETAG = '[MyCERT DATP]'
+TITLELENGTH = 70
