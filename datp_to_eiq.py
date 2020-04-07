@@ -232,7 +232,7 @@ def download(options):
             print("U) Contacting " + url + " ...")
         req = urllib.request.Request(url, headers=apiheaders)
         response = urllib.request.urlopen(req)
-        jsonResponse = json.loads(response.read())
+        jsonResponse = json.loads(response.read().decode('utf-8'))
         if options.verbose:
             print("U) Got a DATP JSON response package:")
             pprint.pprint(jsonResponse)
