@@ -100,8 +100,8 @@ def transform(alerts, options):
                     threatFamilyName = 'an unknown threat type'
                 title = datpEvent['title'] + ' on ' + computerDnsName
                 description = detectionSource + ' detected a(n) '
-                description += category + ' event caused by the '
-                description += threatFamilyName + ' threat, '
+                description += category + ' event caused by '
+                description += threatFamilyName + ', '
                 description += 'performed by ' + handle + ' user.'
                 description += '<br /><br />'
                 description += detectionSource + ' action: '
