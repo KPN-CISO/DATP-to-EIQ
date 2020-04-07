@@ -36,7 +36,7 @@ def transform(alerts, options):
                 tlp = 'amber'
                 reliability = 'B'
                 if 'alertCreationTime' in datpEvent:
-                    observedtime = datpEvent['alertCreationTime'].split('.')[1]
+                    observedtime = datpEvent['alertCreationTime'].split('.')[0]
                     observedtime += 'Z'
                 entity.set_entity_tlp(tlp)
                 entity.set_entity_reliability(reliability)
