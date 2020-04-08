@@ -108,6 +108,15 @@ def transform(alerts, options, aadToken):
                                 usertypes.append(item['logonTypes'])
                                 usertype = ', '.join(usertypes)
                                 handles.append((id, usertype))
+                                eiqtype = entity.OBSERVABLE_HANDLE
+                                classification = entity.CLASSIFICATION_UNKNOWN
+                                confidence = entity.CONFIDENCE_HIGH
+                                link_type = entity.OBSERVABLE_LINK_OBSERVED
+                                entity.add_observable(eiqtype,
+                                                      id,
+                                                      classification=classification,
+                                                      confidence=confidence,
+                                                      link_type=link_type)
                         except urllib.error.HTTPError:
                             if options.verbose:
                                 print("U) Machine " + machineId + ' is unknown!')
@@ -131,6 +140,15 @@ def transform(alerts, options, aadToken):
                                 usertypes.append(item['logonTypes'])
                                 usertype = ', '.join(usertypes)
                                 handles.append((id, usertype))
+                                eiqtype = entity.OBSERVABLE_HANDLE
+                                classification = entity.CLASSIFICATION_UNKNOWN
+                                confidence = entity.CONFIDENCE_HIGH
+                                link_type = entity.OBSERVABLE_LINK_OBSERVED
+                                entity.add_observable(eiqtype,
+                                                      id,
+                                                      classification=classification,
+                                                      confidence=confidence,
+                                                      link_type=link_type)
                         except urllib.error.HTTPError:
                             if options.verbose:
                                 print("U) Machine " + machineId + ' is unknown!')
