@@ -12,7 +12,7 @@ Sample settings
 #					'https://login.windows.net/%s/oauth2/token'
 # DATPRESOURCEIDURL	[Required]
 # DATPAPPIDURL		[Required] AppID URL - usually the URL for a Security Center alerts
-#					API, e.g.: 'https://api.securitycenter.windows.com/api/alerts'
+#					API, e.g.: 'https://api.securitycenter.windows.com/api'
 # DATPTIME			[Required] Time window of alerts to ingest into EIQ (default: 3600)
 # DATPSSLVERIFY		[Required] Verify the SSL connection (default: yes)
 
@@ -21,7 +21,7 @@ DATPAPPID = '<app-id>'
 DATPAPPSECRET = '<app-secret>'
 DATPTOKENURL = 'https://login.windows.net/%s/oauth2/token' % (DATPTENANTID)
 DATPRESOURCEIDURL = 'https://api.securitycenter.windows.com'
-DATPAPPIDURL = 'https://api-eu.securitycenter.windows.com/api/alerts'
+DATPAPPIDURL = 'https://api-eu.securitycenter.windows.com/api'
 DATPTIME = 3600
 DATPSSLVERIFY = True
 
