@@ -189,7 +189,7 @@ def transform(alerts, options, aadToken):
                 description += category + ' event on ' + computerDnsName
                 description += ' (' + machineId + ') '
                 description += 'caused by ' + threatFamilyName + '.<br /><br />'
-                description += '<h1>Users on this system</h1>'
+                description += '<h1>System Users</h1>'
                 for handle, usertype in handles:
                     description += handle
                     description += ' (' + usertype +')<br />'
@@ -197,7 +197,7 @@ def transform(alerts, options, aadToken):
                 description += '<h1>Performed Action(s)</h1>'
                 description += detectionSource + ' action: '
                 description += investigationState + '<br /><br />'
-                description += '<h1>Incident assignment</h1>'
+                description += '<h1>Incident Assignment</h1>'
                 description += 'Assigned to: ' + assignedTo
                 description += '<br /><br />'
                 description += '<h1>Event Description</h1>'
