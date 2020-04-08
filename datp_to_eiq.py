@@ -11,6 +11,7 @@ import pprint
 import socket
 import time
 import requests
+import ssl
 import urllib
 
 from eiqlib import eiqjson
@@ -19,7 +20,7 @@ from eiqlib import eiqcalls
 from config import settings
 
 
-def transform(alerts, options):
+def transform(alerts, options, aadToken):
     '''
     Take the DATP JSON object, extract all attributes into a list.
     '''
@@ -29,7 +30,8 @@ def transform(alerts, options):
         if len(alerts) > 0:
             entityList = []
             for datpEvent in alerts:
-                eventID = datpEvent['id']
+                handles = []
+                eventID = datpEvent['id'].split('_')[0]
                 entity = eiqjson.EIQEntity()
                 entity.set_entity(entity.ENTITY_INCIDENT)
                 entity.set_entity_source(settings.EIQSOURCE)
@@ -41,7 +43,7 @@ def transform(alerts, options):
                 entity.set_entity_tlp(tlp)
                 entity.set_entity_reliability(reliability)
                 if 'category' in datpEvent:
-                    category = datpEvent['category']
+                    category = datpEvent['category'].lower()
                 else:
                     category = 'unknown category'
                 if 'detectionSource' in datpEvent:
@@ -52,10 +54,12 @@ def transform(alerts, options):
                     assignedTo = datpEvent['assignedTo']
                 else:
                     assignedTo = 'nobody'
+                if datpEvent['machineId']:
+                    machineId = datpEvent['machineId']
                 if datpEvent['relatedUser']:
-                    domainName = datpEvent['relatedUser']['domainName']
-                    userName = datpEvent['relatedUser']['userName']
-                    handle = 'the ' + domainName + '\\' + userName
+                    domainName = datpEvent['relatedUser']['domainName'].lower()
+                    userName = datpEvent['relatedUser']['userName'].lower()
+                    handles.append('the ' + domainName + '\\' + userName)
                     eiqtype = entity.OBSERVABLE_HANDLE
                     classification = entity.CLASSIFICATION_UNKNOWN
                     confidence = entity.CONFIDENCE_HIGH
@@ -66,7 +70,72 @@ def transform(alerts, options):
                                           confidence=confidence,
                                           link_type=link_type)
                 else:
-                    handle = 'an unknown'
+                    '''
+                    Attempt to find the logonusers for the system
+                    '''
+                    apiheaders = {
+                        'Content-Type' : 'application/json',
+                        'Accept' : 'application/json',
+                        'Authorization' : 'Bearer ' + aadToken
+                    }
+                    filter = ''
+                    url = settings.DATPAPPIDURL + '/machines/' + machineId + '/logonusers'
+                    if options.verbose:
+                        print("U) Contacting " + url + " ...")
+                    if not settings.DATPSSLVERIFY:
+                        if options.verbose:
+                            print("W) You have disabled SSL verification for DATP, " +
+                                  "this is not recommended!")
+                        sslcontext = ssl.create_default_context()
+                        sslcontext.check_hostname = False
+                        sslcontext.verify_mode = ssl.CERT_NONE
+                        req = urllib.request.Request(url, headers=apiheaders)
+                        try:
+                            response = urllib.request.urlopen(req, context=sslcontext)
+                            jsonResponse = json.loads(response.read().decode('utf-8'))['value']
+                            if options.verbose:
+                                print("U) Got a DATP JSON response package:")
+                                pprint.pprint(jsonResponse)
+                            for item in jsonResponse:
+                                id = item['id'].lower()
+                                usertypes = []
+                                if item['isDomainAdmin'] == True:
+                                    usertypes.append('Domain Admin')
+                                else:
+                                    usertypes.append('Normal User')
+                                if item['isOnlyNetworkUser'] == True:
+                                    usertypes.append('Only Network')
+                                usertypes.append(item['logonTypes'])
+                                usertype = ', '.join(usertypes)
+                                handles.append((id, usertype))
+                        except urllib.error.HTTPError:
+                            if options.verbose:
+                                print("U) Machine " + machineId + ' is unknown!')
+                    else:
+                        req = urllib.request.Request(url, headers=apiheaders)
+                        try:
+                            response = urllib.request.urlopen(req)
+                            jsonResponse = json.loads(response.read().decode('utf-8'))['value']
+                            if options.verbose:
+                                print("U) Got a DATP JSON response package:")
+                                pprint.pprint(jsonResponse)
+                            for item in jsonResponse:
+                                id = item['id'].lower()
+                                usertypes = []
+                                if item['isDomainAdmin'] == True:
+                                    usertypes.append('Domain Admin')
+                                else:
+                                    usertypes.append('Normal User')
+                                if item['isOnlyNetworkUser'] == True:
+                                    usertypes.append('Only Network')
+                                usertypes.append(item['logonTypes'])
+                                usertype = ', '.join(usertypes)
+                                handles.append((id, usertype))
+                        except urllib.error.HTTPError:
+                            if options.verbose:
+                                print("U) Machine " + machineId + ' is unknown!')
+                    if len(handles) == 0:
+                        handles.append(('Unknown user', 'unknown account type'))
                 if 'computerDnsName' in datpEvent:
                     computerDnsName = datpEvent['computerDnsName']
                     eiqtype = entity.OBSERVABLE_HOST
@@ -80,8 +149,6 @@ def transform(alerts, options):
                                           link_type=link_type)
                 else:
                     computerDnsName = 'an unknown system'
-                if datpEvent['machineId']:
-                    machineId = datpEvent['machineId']
                 if datpEvent['investigationState']:
                     investigationState = datpEvent['investigationState']
                 if datpEvent['threatFamilyName']:
@@ -99,15 +166,23 @@ def transform(alerts, options):
                 else:
                     threatFamilyName = 'an unknown threat type'
                 title = datpEvent['title'] + ' on ' + computerDnsName
-                description = detectionSource + ' detected a(n) '
-                description += category + ' event caused by '
-                description += threatFamilyName + ', '
-                description += 'performed by ' + handle + ' user.'
-                description += '<br /><br />'
+                description = '<h2>Event Description</h2>'
+                description += detectionSource + ' detected a(n) '
+                description += category + ' event on ' + computerDnsName
+                description += ' (' + machineId + ') '
+                description += 'caused by ' + threatFamilyName + '.<br /><br />'
+                description += '<h2>Users on this system</h2>'
+                for handle, usertype in handles:
+                    description += handle
+                    description += ' (' + usertype +')<br />'
+                description += '<br />'
+                description += '<h2>Performed Action(s)</h2>'
                 description += detectionSource + ' action: '
-                description += investigationState + '<br />'
+                description += investigationState + '<br /><br />'
+                description += '<h2>Incident assignment</h2>'
                 description += 'Assigned to: ' + assignedTo
                 description += '<br /><br />'
+                description += '<h2>Event Description</h2>'
                 description += datpEvent['description'].replace('\n','<br />')
                 entity.set_entity_title(title + " - Event " +
                                         str(eventID) + " - " +
@@ -212,7 +287,7 @@ def download(options):
         if options.verbose:
             print("U) Downloading DATP Alerts ...")
 
-        alerturl = settings.DATPAPPIDURL
+        alerturl = settings.DATPAPPIDURL + '/alerts/'
         apiheaders = {
             'Content-Type' : 'application/json',
             'Accept' : 'application/json',
@@ -225,20 +300,25 @@ def download(options):
                        starttime).strftime("%Y-%m-%dT%H:%M:%SZ"))
         filter += iso8601time
         url = alerturl + "?$filter=" + filter
+        if options.verbose:
+            print("U) Contacting " + url + " ...")
         if not settings.DATPSSLVERIFY:
             if options.verbose:
                 print("W) You have disabled SSL verification for DATP, " +
                       "this is not recommended!")
-            urllib3.disable_warnings()
-        if options.verbose:
-            print("U) Contacting " + url + " ...")
-        req = urllib.request.Request(url, headers=apiheaders)
-        response = urllib.request.urlopen(req)
+            sslcontext = ssl.create_default_context()
+            sslcontext.check_hostname = False
+            sslcontext.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(url, headers=apiheaders)
+            response = urllib.request.urlopen(req, context=sslcontext)
+        else:
+            req = urllib.request.Request(url, headers=apiheaders)
+            response = urllib.request.urlopen(req)
         jsonResponse = json.loads(response.read().decode('utf-8'))
         if options.verbose:
             print("U) Got a DATP JSON response package:")
             pprint.pprint(jsonResponse)
-        return jsonResponse['value']
+        return (jsonResponse['value'], aadToken)
     except IOError:
         if options.verbose:
             print("E) An error occured downloading DATP alerts!")
@@ -278,12 +358,13 @@ def main():
                         help='[optional] Do not update the existing EclecticIQ '
                              'entity, but create a new one (default: disabled)')
     args = parser.parse_args()
-    alerts = download(args)
+    alerts, aadToken = download(args)
     if alerts:
-        entities = transform(alerts, args)
+        entities = transform(alerts, args, aadToken)
         if entities:
             for entity, uuid in entities:
                 if args.verbose:
+                    print("U) EIQ JSON entity generated:")
                     print(entity.get_as_json())
                 eiqIngest(entity.get_as_json(), uuid, args)
 
