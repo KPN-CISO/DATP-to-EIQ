@@ -99,7 +99,7 @@ def transform(alerts, options, aadToken):
                             for item in jsonResponse:
                                 id = item['id'].lower()
                                 usertypes = []
-                                if item['isDomainAdmin'] == True:
+                                if item['isDomainAdmin']:
                                     usertypes.append('Domain Admin')
                                 else:
                                     usertypes.append('Normal User')
@@ -131,7 +131,7 @@ def transform(alerts, options, aadToken):
                             for item in jsonResponse:
                                 id = item['id'].lower()
                                 usertypes = []
-                                if item['isDomainAdmin'] == True:
+                                if item['isDomainAdmin']:
                                     usertypes.append('Domain Admin')
                                 else:
                                     usertypes.append('Normal User')
