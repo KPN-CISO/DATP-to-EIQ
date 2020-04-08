@@ -200,7 +200,7 @@ def transform(alerts, options, aadToken):
                 description += '<h1>Incident Assignment</h1>'
                 description += 'Assigned to: ' + assignedTo
                 description += '<br /><br />'
-                description += '<h1>Event Description</h1>'
+                description += '<h1>Additional Explanation</h1>'
                 description += datpEvent['description'].replace('\n','<br />')
                 entity.set_entity_title(title + " - Event " +
                                         str(eventID) + " - " +
