@@ -95,6 +95,7 @@ class EIQEntity:
     OBSERVABLE_TELEPHONE = 'telephone'
     OBSERVABLE_NATIONALITY = 'nationality'
     OBSERVABLE_PERSON = 'person'
+    OBSERVABLE_HANDLE = 'handle'
     OBSERVABLE_SNORT = 'snort'
     OBSERVABLE_WINREGISTRY = 'winregistry'
     OBSERVABLE_YARA = 'yara'
