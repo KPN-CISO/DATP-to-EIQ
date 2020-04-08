@@ -166,23 +166,23 @@ def transform(alerts, options, aadToken):
                 else:
                     threatFamilyName = 'an unknown threat type'
                 title = datpEvent['title'] + ' on ' + computerDnsName
-                description = '<h2>Event Description</h2>'
+                description = '<h1>Event Description</h1>'
                 description += detectionSource + ' detected a(n) '
                 description += category + ' event on ' + computerDnsName
                 description += ' (' + machineId + ') '
                 description += 'caused by ' + threatFamilyName + '.<br /><br />'
-                description += '<h2>Users on this system</h2>'
+                description += '<h1>Users on this system</h1>'
                 for handle, usertype in handles:
                     description += handle
                     description += ' (' + usertype +')<br />'
                 description += '<br />'
-                description += '<h2>Performed Action(s)</h2>'
+                description += '<h1>Performed Action(s)</h1>'
                 description += detectionSource + ' action: '
                 description += investigationState + '<br /><br />'
-                description += '<h2>Incident assignment</h2>'
+                description += '<h1>Incident assignment</h1>'
                 description += 'Assigned to: ' + assignedTo
                 description += '<br /><br />'
-                description += '<h2>Event Description</h2>'
+                description += '<h1>Event Description</h1>'
                 description += datpEvent['description'].replace('\n','<br />')
                 entity.set_entity_title(title + " - Event " +
                                         str(eventID) + " - " +
