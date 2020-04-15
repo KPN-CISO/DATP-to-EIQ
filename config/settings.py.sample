@@ -2,10 +2,17 @@
 Sample settings
 """
 
+# Global Settings
+
+# TENANTID              [Required] Microsoft Tenant ID
+
+TENANTID = '<tenant-id>'
+
+# Settings for Microsoft Defender ATP API
+
 # The following variables are needed to generate a DATP token validity (default:
 # 3600 seconds) and define the time window
 #
-# DATPTENANTID		[Required] replace with your tenant ID
 # DATPAPPID		[Required] replace with your app ID
 # DATPAPPSECRET		[Required] replace with your app secret
 # DATPTOKENURL		[Required] OAuth2 provider for generating token. This is normally
@@ -21,7 +28,6 @@ Sample settings
 #                                  'domain\\username'. You can have multiple dictionary
 #                                  entries for multiple domains/forests.
 
-DATPTENANTID = '<tenant-id>'
 DATPAPPID = '<app-id>'
 DATPAPPSECRET = '<app-secret>'
 DATPADMAPPING = { 'company.com': 'domain' }
@@ -30,6 +36,23 @@ DATPRESOURCEIDURL = 'https://api.securitycenter.windows.com'
 DATPAPPIDURL = 'https://api-eu.securitycenter.windows.com/api'
 DATPTIME = 3600
 DATPSSLVERIFY = True
+
+# Settings for Microsoft Graph API
+
+# GRAPHURL              [Required] Graph API endpoint: 'https://graph.microsoft.com/v1.0/'
+# GRAPHRESOURCEAPPIDURI [Required] Should be 'https://graph.microsoft.com'
+# GRAPHCLIENTID         [Required] Your Graph client ID
+# GRAPHCLIENTSECRET     [Required] Your Graph Secret
+# GRAPHTOKENURI         [Required] 'https://login.microsoftonline.com/%s/oauth2/token'
+# GRAPHSSLVERIFY        [Required] Verify the SSL connection. Do not change unless you know
+#                                  what you are doing.
+
+GRAPHURL = 'https://graph.microsoft.com/v1.0/'
+GRAPHRESOURCEAPPIDURI = 'https://graph.microsoft.com'
+GRAPHCLIENTID = '<client-id>'
+GRAPHCLIENTSECRET = '<client-secret>'
+GRAPHTOKENURI = 'https://login.microsoftonline.com/%s/oauth2/token' % (TENANTID)
+GRAPHSSLVERIFY = True
 
 # Settings for EclecticIQ
 
