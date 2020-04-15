@@ -16,10 +16,12 @@ import socket
 from eiqlib import eiqjson
 from eiqlib import eiqcalls
 
+from graphlib import graph
+
 from config import settings
 
 
-def transform(alerts, options, aadToken):
+def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
     '''
     Take the DATP JSON object, extract all attributes into a list.
     '''
@@ -57,18 +59,84 @@ def transform(alerts, options, aadToken):
                     machineId = datpEvent['machineId']
                 if datpEvent['relatedUser']:
                     domainName = datpEvent['relatedUser']['domainName'].lower()
-                    userName = datpEvent['relatedUser']['userName'].lower()
-                    handle = domainName + '\\' + userName
-                    handles.append('the ' + handle)
-                    eiqtype = entity.OBSERVABLE_HANDLE
-                    classification = entity.CLASSIFICATION_UNKNOWN
-                    confidence = entity.CONFIDENCE_HIGH
-                    link_type = entity.OBSERVABLE_LINK_OBSERVED
-                    entity.add_observable(eiqtype,
-                                          handle,
-                                          classification=classification,
-                                          confidence=confidence,
-                                          link_type=link_type)
+                    accountName = datpEvent['relatedUser']['accountName'].lower()
+                    if domainName in settings.DATPMAPPING:
+                        email = accountName + '@' + settings.DATPADMAPPING[domainName]
+                        sslcontext = ssl.create_default_context()
+                        uri = settings.GRAPHURL + '/users/%s' % email
+                        uri += '?$select=OnPremisesSamAccountName,'
+                        uri += 'mail,'
+                        uri += 'businessPhones,mobilePhone'
+                        headers = {
+                            'Content-type': 'application/json',
+                            'Accept': 'application/json',
+                            'Authorization': 'Bearer %s' % GRAPHTOKEN,
+                        }
+                        request = urllib.request.Request(uri,
+                                                     headers=headers)
+                        if not settings.GRAPHSSLVERIFY:
+                            sslcontext.check_hostname = False
+                            sslcontext.verify_mode = ssl.CERT_NONE
+                        response = urllib.request.urlopen(request,
+                                                          context=sslcontext)
+                        jsonResponse = json.loads(response.read().decode('utf-8'))
+                        confidence = entity.CONFIDENCE_HIGH
+                        if 'onPremisesSamAccountName' in jsonResponse:
+                            eiqtype = entity.OBSERVABLE_HANDLE
+                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                            classification = entity.CLASSIFICATION_UNKNOWN
+                            handle = domain + '\\' + jsonResponse['onPremisesSamAccountName']
+                            entity.add_observable(eiqtype,
+                                                  handle,
+                                                  classification=classification,
+                                                  confidence=confidence,
+                                                  link_type=link_type)
+                            if 'mail' in jsonResponse:
+                                eiqtype = entity.OBSERVABLE_EMAIL
+                                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                                classification = entity.CLASSIFICATION_UNKNOWN
+                                mail = jsonResponse['mail']
+                                entity.add_observable(eiqtype,
+                                                      mail,
+                                                      classification=classification,
+                                                      confidence=confidence,
+                                                      link_type=link_type)
+                            phones = []
+                            if 'businessPhones' in jsonResponse:
+                                for number in jsonResponse['businessPhones']:
+                                    phones.append(number)
+                                    eiqtype = entity.OBSERVABLE_TELEPHONE
+                                    link_type = entity.OBSERVABLE_LINK_OBSERVED
+                                    classification = entity.CLASSIFICATION_UNKNOWN
+                                    entity.add_observable(eiqtype,
+                                                          number,
+                                                          classification=classification,
+                                                          confidence=confidence,
+                                                          link_type=link_type)
+                            if 'mobilePhone' in jsonResponse:
+                                if jsonResponse['mobilePhone']:
+                                    for number in jsonResponse['mobilePhone']:
+                                        phones.append(number)
+                                        eiqtype = entity.OBSERVABLE_TELEPHONE
+                                        link_type = entity.OBSERVABLE_LINK_OBSERVED
+                                        classification = entity.CLASSIFICATION_UNKNOWN
+                                        entity.add_observable(eiqtype,
+                                                              number,
+                                                              classification=classification,
+                                                              confidence=confidence,
+                                                              link_type=link_type)
+                    else:
+                        handle = domainName + '\\' + accountName
+                        handles.append((handle, ('unknown type')))
+                        eiqtype = entity.OBSERVABLE_HANDLE
+                        classification = entity.CLASSIFICATION_UNKNOWN
+                        confidence = entity.CONFIDENCE_HIGH
+                        link_type = entity.OBSERVABLE_LINK_OBSERVED
+                        entity.add_observable(eiqtype,
+                                              handle,
+                                              classification=classification,
+                                              confidence=confidence,
+                                              link_type=link_type)
                 else:
                     '''
                     Attempt to find the logonusers for the system
@@ -76,20 +144,18 @@ def transform(alerts, options, aadToken):
                     apiheaders = {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'Authorization': 'Bearer ' + aadToken
+                        'Authorization': 'Bearer ' + AADTOKEN
                     }
                     url = settings.DATPAPPIDURL + '/machines/' + machineId + '/logonusers'
                     if options.verbose:
                         print("U) Contacting " + url + " ...")
+                    sslcontext = ssl.create_default_context()
                     if not settings.DATPSSLVERIFY:
                         if options.verbose:
                             print("W) You have disabled SSL verification for DATP, " +
                                   "this is not recommended!")
-                        sslcontext = ssl.create_default_context()
                         sslcontext.check_hostname = False
                         sslcontext.verify_mode = ssl.CERT_NONE
-                    else:
-                        sslcontext = ssl.create_default_context()
                     req = urllib.request.Request(url, headers=apiheaders)
                     try:
                         response = urllib.request.urlopen(req, context=sslcontext)
@@ -99,7 +165,84 @@ def transform(alerts, options, aadToken):
                             pprint.pprint(jsonResponse)
                         usertypes = []
                         for item in jsonResponse:
-                            id = item['id'].lower()
+                            accountName = item['accountName'].lower()
+                            domainName = item['accountDomain'].lower()
+                            for key in settings.DATPADMAPPING:
+                                addomain = settings.DATPADMAPPING[key]
+                                if domainName == addomain:
+                                    email = accountName + '@' + key
+                                    sslcontext = ssl.create_default_context()
+                                    uri = settings.GRAPHURL + '/users/%s' % email
+                                    uri += '?$select=OnPremisesSamAccountName,'
+                                    uri += 'mail,'
+                                    uri += 'businessPhones,mobilePhone'
+                                    headers = {
+                                        'Content-type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'Authorization': 'Bearer %s' % GRAPHTOKEN,
+                                    }
+                                    request = urllib.request.Request(uri,
+                                                                 headers=headers)
+                                    if not settings.GRAPHSSLVERIFY:
+                                        sslcontext.check_hostname = False
+                                        sslcontext.verify_mode = ssl.CERT_NONE
+                                    if options.verbose:
+                                        print('U) Contacting ' + uri + ' ...')
+                                    response = urllib.request.urlopen(request,
+                                                                      context=sslcontext)
+                                    jsonResponse = json.loads(response.read().decode('utf-8'))
+                                    if options.verbose:
+                                        print("U) Got a DATP JSON response package:")
+                                        pprint.pprint(jsonResponse)
+                                    confidence = entity.CONFIDENCE_HIGH
+                                    if 'onPremisesSamAccountName' in jsonResponse:
+                                        userName = jsonResponse['onPremisesSamAccountName']
+                                        eiqtype = entity.OBSERVABLE_HANDLE
+                                        link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                                        classification = entity.CLASSIFICATION_UNKNOWN
+                                        handle = addomain + '\\'
+                                        handle += userName.lower()
+                                        entity.add_observable(eiqtype,
+                                                              handle,
+                                                              classification=classification,
+                                                              confidence=confidence,
+                                                              link_type=link_type)
+                                        if 'mail' in jsonResponse:
+                                            eiqtype = entity.OBSERVABLE_EMAIL
+                                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                                            classification = entity.CLASSIFICATION_UNKNOWN
+                                            mail = jsonResponse['mail']
+                                            entity.add_observable(eiqtype,
+                                                                  mail,
+                                                                  classification=classification,
+                                                                  confidence=confidence,
+                                                                  link_type=link_type)
+                                        phones = []
+                                        if 'businessPhones' in jsonResponse:
+                                            if jsonResponse['businessPhones']:
+                                                businessPhones = jsonResponse['businessPhones']
+                                                for number in businessPhones:
+                                                    phones.append(number.replace(' ', ''))
+                                                    eiqtype = entity.OBSERVABLE_TELEPHONE
+                                                    link_type = entity.OBSERVABLE_LINK_OBSERVED
+                                                    classification = entity.CLASSIFICATION_UNKNOWN
+                                                    entity.add_observable(eiqtype,
+                                                                          number,
+                                                                          classification=classification,
+                                                                          confidence=confidence,
+                                                                          link_type=link_type)
+                                        if 'mobilePhone' in jsonResponse:
+                                            if jsonResponse['mobilePhone']:
+                                                mobilePhone = jsonResponse['mobilePhone']
+                                                phones.append(mobilePhone.replace(' ', ''))
+                                                eiqtype = entity.OBSERVABLE_TELEPHONE
+                                                link_type = entity.OBSERVABLE_LINK_OBSERVED
+                                                classification = entity.CLASSIFICATION_UNKNOWN
+                                                entity.add_observable(eiqtype,
+                                                                      number,
+                                                                      classification=classification,
+                                                                      confidence=confidence,
+                                                                      link_type=link_type)
                             if item['isDomainAdmin']:
                                 usertypes.append('Domain Admin')
                             else:
@@ -108,16 +251,7 @@ def transform(alerts, options, aadToken):
                                 usertypes.append('Only Network')
                             usertypes.append(item['logonTypes'])
                             usertype = ', '.join(usertypes)
-                            handles.append((id, usertype))
-                            eiqtype = entity.OBSERVABLE_HANDLE
-                            classification = entity.CLASSIFICATION_UNKNOWN
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_OBSERVED
-                            entity.add_observable(eiqtype,
-                                                  id,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
+                            handles.append((handle, (usertype)))
                     except urllib.error.HTTPError:
                         if options.verbose:
                             print("U) Machine " + machineId + ' is unknown!')
@@ -201,7 +335,7 @@ def transform(alerts, options, aadToken):
                         print("U) Could not IP information for " + machineId + '!')
                     raise
                 if len(handles) == 0:
-                    handles.append(('Unknown user', 'unknown account type'))
+                    handles.append(('Unknown user', ('unknown account type')))
                 if 'computerDnsName' in datpEvent:
                     computerDnsName = datpEvent['computerDnsName']
                     eiqtype = entity.OBSERVABLE_HOST
@@ -240,7 +374,8 @@ def transform(alerts, options, aadToken):
                 description += machineInfo
                 description += '<br />'
                 description += '<h1>System Users</h1>'
-                for handle, usertype in handles:
+                for account in handles:
+                    handle, usertype = account
                     description += handle
                     description += ' (' + usertype +')<br />'
                 description += '<br />'
@@ -343,7 +478,7 @@ def download(options):
         req = urllib.request.Request(settings.DATPTOKENURL, data)
         response = urllib.request.urlopen(req)
         jsonResponse = json.loads(response.read().decode('utf-8'))
-        aadToken = jsonResponse["access_token"]
+        AADTOKEN = jsonResponse["access_token"]
     except urllib.error.HTTPError:
         if options.verbose:
             print("E) Error generating DATP access token!")
@@ -359,7 +494,7 @@ def download(options):
         apiheaders = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Authorization': 'Bearer ' + aadToken
+            'Authorization': 'Bearer ' + AADTOKEN
         }
         filter = 'alertCreationTime+gt+'
         endtime = int(time.time())
@@ -386,7 +521,7 @@ def download(options):
         if options.verbose:
             print("U) Got a DATP JSON response package:")
             pprint.pprint(jsonResponse)
-        return (jsonResponse['value'], aadToken)
+        return (jsonResponse['value'], AADTOKEN)
     except IOError:
         if options.verbose:
             print("E) An error occured downloading DATP alerts!")
@@ -426,15 +561,17 @@ def main():
                         help='[optional] Do not update the existing EclecticIQ '
                              'entity, but create a new one (default: disabled)')
     args = parser.parse_args()
-    alerts, aadToken = download(args)
+    alerts, AADTOKEN = download(args)
     if alerts:
-        entities = transform(alerts, args, aadToken)
-        if entities:
-            for entity, uuid in entities:
-                if args.verbose:
-                    print("U) EIQ JSON entity generated:")
-                    print(entity.get_as_json())
-                eiqIngest(entity.get_as_json(), uuid, args)
+        GRAPHTOKEN = graph.generateGraphToken(args, settings)
+        if GRAPHTOKEN:
+            entities = transform(alerts, args, AADTOKEN, GRAPHTOKEN)
+            if entities:
+                for entity, uuid in entities:
+                    if args.verbose:
+                        print("U) EIQ JSON entity generated:")
+                        print(entity.get_as_json())
+                    eiqIngest(entity.get_as_json(), uuid, args)
 
 
 if __name__ == "__main__":
