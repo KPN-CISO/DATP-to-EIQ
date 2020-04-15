@@ -59,8 +59,8 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                     machineId = datpEvent['machineId']
                 if datpEvent['relatedUser']:
                     domainName = datpEvent['relatedUser']['domainName'].lower()
-                    accountName = datpEvent['relatedUser']['accountName'].lower()
-                    if domainName in settings.DATPMAPPING:
+                    accountName = datpEvent['relatedUser']['userName'].lower()
+                    if domainName in settings.DATPADMAPPING:
                         email = accountName + '@' + settings.DATPADMAPPING[domainName]
                         sslcontext = ssl.create_default_context()
                         uri = settings.GRAPHURL + '/users/%s' % email
