@@ -368,7 +368,7 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                           link_type=link_type)
                 else:
                     threatFamilyName = 'an unknown threat type'
-                title = datpEvent['title'] + ' on ' + computerDnsName
+                title = computerDnsName + ': ' + datpEvent['title']
                 description = '<h1>Event Description</h1>'
                 description += detectionSource + ' detected a(n) '
                 description += category + ' event on ' + computerDnsName
