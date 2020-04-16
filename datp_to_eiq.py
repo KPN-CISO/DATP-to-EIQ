@@ -103,8 +103,23 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                                       link_type=link_type)
                             phones = []
                             if 'businessPhones' in jsonResponse:
-                                for number in jsonResponse['businessPhones']:
-                                    phones.append(number)
+                                if jsonResponse['businessPhones']:
+                                    numbers = jsonResponse['businessPhones']
+                                    if isinstance(numbers, list):
+                                        for number in numbers:
+                                            phones.append(number)
+                                    else:
+                                        phones.append(number)
+                            if 'mobilePhone' in jsonResponse:
+                                if jsonResponse['mobilePhone']:
+                                    numbers = jsonResponse['mobilePhone']
+                                    if isinstance(numbers, list):
+                                        for number in numbers:
+                                            phones.append(number)
+                                    else:
+                                        phones.append(number)
+                            if len(phones) > 0:
+                                for number in phones:
                                     eiqtype = entity.OBSERVABLE_TELEPHONE
                                     link_type = entity.OBSERVABLE_LINK_OBSERVED
                                     classification = entity.CLASSIFICATION_UNKNOWN
@@ -113,18 +128,6 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                                           classification=classification,
                                                           confidence=confidence,
                                                           link_type=link_type)
-                            if 'mobilePhone' in jsonResponse:
-                                if jsonResponse['mobilePhone']:
-                                    for number in jsonResponse['mobilePhone']:
-                                        phones.append(number)
-                                        eiqtype = entity.OBSERVABLE_TELEPHONE
-                                        link_type = entity.OBSERVABLE_LINK_OBSERVED
-                                        classification = entity.CLASSIFICATION_UNKNOWN
-                                        entity.add_observable(eiqtype,
-                                                              number,
-                                                              classification=classification,
-                                                              confidence=confidence,
-                                                              link_type=link_type)
                     else:
                         handle = domainName + '\\' + accountName
                         handles.append((handle, ('unknown type')))
@@ -220,21 +223,22 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                         phones = []
                                         if 'businessPhones' in jsonResponse:
                                             if jsonResponse['businessPhones']:
-                                                businessPhones = jsonResponse['businessPhones']
-                                                for number in businessPhones:
-                                                    phones.append(number.replace(' ', ''))
-                                                    eiqtype = entity.OBSERVABLE_TELEPHONE
-                                                    link_type = entity.OBSERVABLE_LINK_OBSERVED
-                                                    classification = entity.CLASSIFICATION_UNKNOWN
-                                                    entity.add_observable(eiqtype,
-                                                                          number,
-                                                                          classification=classification,
-                                                                          confidence=confidence,
-                                                                          link_type=link_type)
+                                                numbers = jsonResponse['businessPhones']
+                                                if isinstance(numbers, list):
+                                                    for number in numbers:
+                                                        phones.append(number)
+                                                else:
+                                                    phones.append(number)
                                         if 'mobilePhone' in jsonResponse:
                                             if jsonResponse['mobilePhone']:
-                                                mobilePhone = jsonResponse['mobilePhone']
-                                                phones.append(mobilePhone.replace(' ', ''))
+                                                numbers = jsonResponse['mobilePhone']
+                                                if isinstance(numbers, list):
+                                                    for number in numbers:
+                                                        phones.append(number)
+                                                else:
+                                                    phones.append(number)
+                                        if len(phones) > 0:
+                                            for number in phones:
                                                 eiqtype = entity.OBSERVABLE_TELEPHONE
                                                 link_type = entity.OBSERVABLE_LINK_OBSERVED
                                                 classification = entity.CLASSIFICATION_UNKNOWN
