@@ -98,8 +98,10 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             '''
             entity = eiqjson.EIQEntity()
             if 'active malware detected' or 'hacktool was detected' in titles:
+                eventType = 'Incident'
                 entity.set_entity(entity.ENTITY_INCIDENT)
             else:
+                eventType = 'Sighting'
                 entity.set_entity(entity.ENTITY_SIGHTING)
             entity.set_entity_source(settings.EIQSOURCE)
             entity.set_entity_observed_time(entityTime + 'Z')
@@ -191,16 +193,29 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                           classification=classification,
                                           confidence=confidence,
                                           link_type=link_type)
-            if threats:
-                threats = 'Active malware: ' + ', '.join(threats)
-            else:
-                threats = 'Unknown threat'
             if not assignees:
-                assignees = 'nobody'
-            title = hostname + ': ' + threats + ' detected - ' + settings.TITLETAG
+                assignees.add('nobody')
+            title = hostname + ': '
+            if threats:
+                title += 'Threats: ' + ', '.join(threats)
+            else:
+                threats.add('Unknown threat')
+                title += 'Unknown threat'
+            title += ' detected - ' + settings.TITLETAG
             entity.set_entity_title(title)
-            description = '<h1>Event Description</h1>'
-            description += 'Threat(s): ' + threats
+            description = '<h1>Description of ' + eventType + '</h1>'
+            description += '<table style="border: 1px solid black;">'
+            description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+            description += 'padding: 4px; text-align: center; font-weight: bold;">'
+            description += 'Threat(s)'
+            description += '</th>'
+            for threat in threats:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left;">'
+                description += threat
+                description += '</td></tr>'
+            description += '</table>'
             description += '<br />'
             description += '<table style="border: 1px solid black;">'
             description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
@@ -210,7 +225,7 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             for detectionSource in detectionSources:
                 description += '<tr>'
                 description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                description += 'padding: 4px; text-align: left;">'
                 description += detectionSource
                 description += '</td></tr>'
             description += '</table>'
@@ -223,11 +238,10 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             for hostname in hostnames:
                 description += '<tr>'
                 description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                description += 'padding: 4px; text-align: left;">'
                 description += hostname
                 description += '</td></tr>'
             description += '</table>'
-            description += '<br />'
             description += '<br />'
             description += '<table style="border: 1px solid black;">'
             description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
@@ -237,11 +251,10 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             for handle in handles:
                 description += '<tr>'
                 description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                description += 'padding: 4px; text-align: left;">'
                 description += handle
                 description += '</td></tr>'
             description += '</table>'
-            description += '<br />'
             description += '<br />'
             description += '<table style="border: 1px solid black;">'
             description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
@@ -251,7 +264,7 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             for investigator in assignees:
                 description += '<tr>'
                 description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                description += 'padding: 4px; text-align: left;">'
                 description += investigator
                 description += '</td></tr>'
             description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
@@ -261,11 +274,10 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             for investigationState in investigationStates:
                 description += '<tr>'
                 description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                description += 'padding: 4px; text-align: left;">'
                 description += investigationState
                 description += '</td></tr>'
             description += '</table>'
-            description += '<h1>Performed Actions</h1>'
             entity.set_entity_description(description)
             uuid = str(machineId) + str(entityTime) + '-DATP'
             entityList.append((entity, uuid))
@@ -307,17 +319,17 @@ def queryUser(email, options, GRAPHTOKEN):
             numbers = jsonResponse['businessPhones']
             if isinstance(numbers, list):
                 for number in numbers:
-                    person['telephone'].add(number)
+                    person['telephone'].add(number.strip(' '))
             else:
-                person['telephone'].add(numbers)
+                person['telephone'].add(numbers.strip(' '))
     if 'mobilePhone' in jsonResponse:
         if jsonResponse['mobilePhone']:
             numbers = jsonResponse['mobilePhone']
             if isinstance(numbers, list):
                 for number in numbers:
-                    person['telephone'].add(number)
+                    person['telephone'].add(number.strip(' '))
             else:
-                person['telephone'].add(numbers)
+                person['telephone'].add(numbers.strip(' '))
     return(person)
     '''
     Take the resulting DATP JSON objects and turn all alerts
