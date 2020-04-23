@@ -103,6 +103,7 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             else:
                 eventType = 'Sighting'
                 entity.set_entity(entity.ENTITY_SIGHTING)
+            entity.set_entity_tlp('amber')
             entity.set_entity_source(settings.EIQSOURCE)
             entity.set_entity_observed_time(entityTime + 'Z')
             if 'High' in severities:
