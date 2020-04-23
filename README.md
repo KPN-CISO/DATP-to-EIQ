@@ -1,20 +1,26 @@
 # Introduction
 
-DATP-to-EIQ is a simple Python script that will connect to your Microsoft Security Center instance, download all Alerts from a given time period and import them into your EclecticIQ instance as Incidents.
+DATP-to-EIQ is a simple Python script that will:
 
-For configuration options, refer to the README.md in the config/ directory.
+1. connect to your Microsoft Security Center instance;
+2. download all events that occurred within the given time window;
+3. import them into your EclecticIQ instance as Sighting or Incident entities.
+
+For configuration options, refer to the `settings.py.sample` file in the `config` directory.
 
 # Requirements
 
-- Python 3 (uses 'requests', 'urllib', 'datetime')
-- EIQlib module from Sebastiaan Groot (eiqjson.py and eiqcalls.py)
-- An DATP account with a valid API token
+- Python 3
+- EIQlib module (https://github.com/KPN-CISO/eiqlib)
+- Microsoft Azure AD and Defender ATP access, with a valid API token (AAD)
+- Graph API credentials to generate Graph API tokens
 - An EclecticIQ account (user+pass) and EIQ 'Source' token
 
 # Getting started
 
 - Clone the repository
-- Rename `settings.py.sample` file in the `config/` directory to `settings.py` and update settings accordingly.
+- Rename the `settings.py.sample` file in the `config` directory to `settings.py` 
+- Edit the settings in the `settings.py` file to reflect your environment
 - Run ./datp_to_eiq.py -h for help/options
 
 # Options
@@ -27,7 +33,6 @@ Running ./datp-to-eiq.py with `-h` will display help:
 
 # Copyright
 
-(c) 2020 Arnim Eijkhoudt <arnime _squigglything_ kpn-cert.nl> and Sebastiaan Groot
-<sebastiaang _monkeytail_ kpn-cert.nl> (for his great EIQ lib / submodule)
+(c) 2020 Arnim Eijkhoudt <arnime _squigglything_ kpn-cert.nl> 
 
 This software is GPLv3 licensed, except where otherwise indicated.
