@@ -427,59 +427,6 @@ def queryMachineInformation(machineId, options, AADTOKEN):
             print("U) Could not IP information for " + machineId + '!')
         raise
     return(machineInfo)
-'''
-    if datpEvent['investigationState']:
-        investigationState = datpEvent['investigationState']
-    if datpEvent['threatFamilyName']:
-        threatFamilyName = datpEvent['threatFamilyName']
-        eiqtype = entity.OBSERVABLE_MALWARE
-        classification = entity.CLASSIFICATION_BAD
-        confidence = entity.CONFIDENCE_HIGH
-        link_type = entity.OBSERVABLE_LINK_OBSERVED
-        entity.add_observable(eiqtype,
-                              threatFamilyName,
-                              classification=classification,
-                              confidence=confidence,
-                              link_type=link_type)
-    else:
-        threatFamilyName = 'an unknown threat type'
-    title = computerDnsName + ': ' + datpEvent['title']
-    description = '<h1>Event Description</h1>'
-    description += detectionSource + ' detected a(n) '
-    description += category + ' event on ' + computerDnsName
-    description += ' (' + machineId + ') '
-    description += 'caused by ' + threatFamilyName + '.<br /><br />'
-    description += '<h1>System Information</h1>'
-    description += machineInfo
-    description += '<br />'
-    description += '<h1>System Users</h1>'
-    for account in handles:
-        handle, usertype = account
-        description += handle
-        description += ' (' + usertype +')<br />'
-    description += '<br />'
-    description += '<h1>Performed Action(s)</h1>'
-    description += detectionSource + ' action: '
-    description += investigationState + '<br /><br />'
-    description += '<h1>Incident Assignment</h1>'
-    description += 'Assigned to: ' + assignedTo
-    description += '<br /><br />'
-    description += '<h1>Additional Notes</h1>'
-    description += datpEvent['description'].replace('\n', '<br />')
-    entity.set_entity_title(title + " - Event " +
-                            str(eventID) + " - " +
-                            settings.TITLETAG)
-    entity.set_entity_observed_time(observedtime)
-    entity.set_entity_description(description)
-    entity.set_entity_confidence(entity.CONFIDENCE_MEDIUM)
-    if 'severity' in datpEvent:
-        if datpEvent['severity'] == 'Informational':
-            entity.set_entity_confidence(entity.CONFIDENCE_LOW)
-        if datpEvent['severity'] == 'High':
-            entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
-    uuid = str(eventID) + '-DATP'
-    entityList.append((entity, uuid))
-'''
 
 def eiqIngest(eiqJSON, uuid, options):
     '''
