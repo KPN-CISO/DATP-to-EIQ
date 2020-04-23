@@ -287,6 +287,7 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             entityList.append((entity, uuid))
     return(entityList)
 
+
 def queryUser(email, options, GRAPHTOKEN):
     person = {'handle': set(),
               'mail': set(),
