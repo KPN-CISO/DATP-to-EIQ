@@ -90,8 +90,6 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                         if 'threatFamilyName' in datpEvent:
                             if datpEvent['threatFamilyName']:
                                 threats.add(datpEvent['threatFamilyName'])
-                        else:
-                            threats.add('unknown')
             '''
             All machine information collected, now build the EclecticIQ
             entity with all relevant information
