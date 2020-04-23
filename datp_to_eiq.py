@@ -23,399 +23,463 @@ from config import settings
 
 def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
     '''
-    Take the DATP JSON object, extract all attributes into a list.
+    First, merge all alerts from the time period of one machine
+    into a single event
     '''
     if options.verbose:
-        print("U) Converting DATP Events into EIQ incidents ...")
+        print("U) Merging correlated DATP Events ...")
     try:
         if len(alerts) > 0:
+            machineIds = dict()
             entityList = []
             for datpEvent in alerts:
-                handles = []
-                eventID = datpEvent['id'].split('_')[0]
+                eventId = datpEvent['id']
+                machineId = datpEvent['machineId']
+                if not machineId in machineIds:
+                    machineIds[machineId] = set()
+                machineIds[machineId].add(eventId)
+            for machineId in machineIds:
+                entityTime = str(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
+                assignees = set()
+                categories = set()
+                detectionSources = set()
+                threats = set()
+                investigationStates = set()
+                severities = set()
+                titles = set()
+                handles = set()
+                hostnames = set()
+                machineInfo = queryMachineInformation(machineId,
+                                                      options,
+                                                      AADTOKEN)
+                logonUsers = queryLogonUsers(machineId,
+                                             options,
+                                             AADTOKEN,
+                                             GRAPHTOKEN)
+                for eventId in machineIds[machineId]:
+                    for datpEvent in alerts:
+                        if eventId == datpEvent['id']:
+                            '''
+                            Now grab all related fields from all events
+                            '''
+                            if 'alertCreationTime' in datpEvent:
+                                alertCreationTime = datpEvent['alertCreationTime'].split('.')[0]
+                                if alertCreationTime < entityTime:
+                                    entityTime = alertCreationTime
+                            if 'category' in datpEvent:
+                                categories.add(datpEvent['category'])
+                            if 'detectionSource' in datpEvent:
+                                detectionSources.add(datpEvent['detectionSource'])
+                            if 'assignedTo' in datpEvent:
+                                if datpEvent['assignedTo']:
+                                    assignees.add(datpEvent['assignedTo'])
+                            if 'relatedUser' in datpEvent:
+                                if datpEvent['relatedUser']:
+                                    userName = datpEvent['relatedUser']['userName'].lower()
+                                    domainName = datpEvent['relatedUser']['domainName'].lower()
+                                    handle = domainName + '\\' + userName
+                                    handles.add(handle)
+                            if 'investigationState' in datpEvent:
+                                if datpEvent['investigationState']:
+                                    investigationStates.add(datpEvent['investigationState'])
+                            if 'severity' in datpEvent:
+                                if datpEvent['severity']:
+                                    severities.add(datpEvent['severity'])
+                            if 'title' in datpEvent:
+                                if datpEvent['title']:
+                                    titles.add(datpEvent['title'].lower())
+                            if 'threatFamilyName' in datpEvent:
+                                if datpEvent['threatFamilyName']:
+                                    threats.add(datpEvent['threatFamilyName'])
+                            else:
+                                threats.add('unknown')
+                '''
+                All machine information collected, now build the EclecticIQ
+                entity with all relevant information
+                '''
                 entity = eiqjson.EIQEntity()
-                entity.set_entity(entity.ENTITY_INCIDENT)
+                if 'active malware detected' or 'hacktool was detected' in titles:
+                    entity.set_entity(entity.ENTITY_INCIDENT)
+                else:
+                    entity.set_entity(entity.ENTITY_SIGHTING)
                 entity.set_entity_source(settings.EIQSOURCE)
-                tlp = 'amber'
-                reliability = 'B'
-                if 'alertCreationTime' in datpEvent:
-                    observedtime = datpEvent['alertCreationTime'].split('.')[0]
-                    observedtime += 'Z'
-                entity.set_entity_tlp(tlp)
-                entity.set_entity_reliability(reliability)
-                if 'category' in datpEvent:
-                    category = datpEvent['category'].lower()
+                entity.set_entity_observed_time(entityTime + 'Z')
+                if 'High' in severities:
+                    entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
+                elif 'Informational' in severities:
+                    entity.set_entity_confidence(entity.CONFIDENCE_LOW)
                 else:
-                    category = 'unknown category'
-                if 'detectionSource' in datpEvent:
-                    detectionSource = datpEvent['detectionSource']
-                else:
-                    detectionSource = 'unknown detection source'
-                if datpEvent['assignedTo']:
-                    assignedTo = datpEvent['assignedTo']
-                else:
-                    assignedTo = 'nobody'
-                if datpEvent['machineId']:
-                    machineId = datpEvent['machineId']
-                if datpEvent['relatedUser']:
-                    domainName = datpEvent['relatedUser']['domainName'].lower()
-                    accountName = datpEvent['relatedUser']['userName'].lower()
-                    if domainName in settings.DATPADMAPPING:
-                        email = accountName + '@' + settings.DATPADMAPPING[domainName]
-                        sslcontext = ssl.create_default_context()
-                        uri = settings.GRAPHURL + '/users/%s' % email
-                        uri += '?$select=OnPremisesSamAccountName,'
-                        uri += 'mail,'
-                        uri += 'businessPhones,mobilePhone'
-                        headers = {
-                            'Content-type': 'application/json',
-                            'Accept': 'application/json',
-                            'Authorization': 'Bearer %s' % GRAPHTOKEN,
-                        }
-                        request = urllib.request.Request(uri,
-                                                     headers=headers)
-                        if not settings.GRAPHSSLVERIFY:
-                            sslcontext.check_hostname = False
-                            sslcontext.verify_mode = ssl.CERT_NONE
-                        response = urllib.request.urlopen(request,
-                                                          context=sslcontext)
-                        jsonResponse = json.loads(response.read().decode('utf-8'))
-                        confidence = entity.CONFIDENCE_HIGH
-                        if 'onPremisesSamAccountName' in jsonResponse:
-                            eiqtype = entity.OBSERVABLE_HANDLE
-                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                            classification = entity.CLASSIFICATION_UNKNOWN
-                            handle = domain + '\\' + jsonResponse['onPremisesSamAccountName']
-                            entity.add_observable(eiqtype,
-                                                  handle,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                            if 'mail' in jsonResponse:
-                                eiqtype = entity.OBSERVABLE_EMAIL
-                                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                                classification = entity.CLASSIFICATION_UNKNOWN
-                                mail = jsonResponse['mail']
-                                entity.add_observable(eiqtype,
-                                                      mail,
-                                                      classification=classification,
-                                                      confidence=confidence,
-                                                      link_type=link_type)
-                            phones = []
-                            if 'businessPhones' in jsonResponse:
-                                if jsonResponse['businessPhones']:
-                                    numbers = jsonResponse['businessPhones']
-                                    if isinstance(numbers, list):
-                                        for number in numbers:
-                                            phones.append(number)
-                                    else:
-                                        phones.append(number)
-                            if 'mobilePhone' in jsonResponse:
-                                if jsonResponse['mobilePhone']:
-                                    numbers = jsonResponse['mobilePhone']
-                                    if isinstance(numbers, list):
-                                        for number in numbers:
-                                            phones.append(number)
-                                    else:
-                                        phones.append(number)
-                            if len(phones) > 0:
-                                for number in phones:
-                                    eiqtype = entity.OBSERVABLE_TELEPHONE
-                                    link_type = entity.OBSERVABLE_LINK_OBSERVED
-                                    classification = entity.CLASSIFICATION_UNKNOWN
-                                    entity.add_observable(eiqtype,
-                                                          number,
-                                                          classification=classification,
-                                                          confidence=confidence,
-                                                          link_type=link_type)
-                    else:
-                        handle = domainName + '\\' + accountName
-                        handles.append((handle, ('unknown type')))
+                    entity.set_entity_confidence(entity.CONFIDENCE_MEDIUM)
+                for hostname in machineInfo['hostnames']:
+                    hostnames.add(hostname)
+                    eiqtype = entity.OBSERVABLE_HOST
+                    classification = entity.CLASSIFICATION_UNKNOWN
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                    entity.add_observable(eiqtype,
+                                          hostname,
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
+                for ip in machineInfo['ips']:
+                    try:
+                        socket.inet_aton(ip)
+                        eiqtype = entity.OBSERVABLE_IPV4
+                    except socket.error:
+                        pass
+                    try:
+                        socket.inet_pton(socket.AF_INET6, ip)
+                        eiqtype = entity.OBSERVABLE_IPV6
+                    except socket.error:
+                        pass
+                    classification = entity.CLASSIFICATION_UNKNOWN
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                    entity.add_observable(eiqtype,
+                                          ip,
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
+                for threat in threats:
+                    eiqtype = entity.OBSERVABLE_MALWARE
+                    classification = entity.CLASSIFICATION_BAD
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                    entity.add_observable(eiqtype,
+                                          threat,
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
+                for handle in handles:
+                    eiqtype = entity.OBSERVABLE_HANDLE
+                    classification = entity.CLASSIFICATION_UNKNOWN
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                    entity.add_observable(eiqtype,
+                                          threat,
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
+                for logonUser in logonUsers:
+                    for handle in logonUser['handle']:
+                        handles.add(handle)
                         eiqtype = entity.OBSERVABLE_HANDLE
                         classification = entity.CLASSIFICATION_UNKNOWN
                         confidence = entity.CONFIDENCE_HIGH
-                        link_type = entity.OBSERVABLE_LINK_OBSERVED
+                        link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
                         entity.add_observable(eiqtype,
                                               handle,
                                               classification=classification,
                                               confidence=confidence,
                                               link_type=link_type)
-                else:
-                    '''
-                    Attempt to find the logonusers for the system
-                    '''
-                    apiheaders = {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'Authorization': 'Bearer ' + AADTOKEN
-                    }
-                    url = settings.DATPAPPIDURL + '/machines/' + machineId + '/logonusers'
-                    if options.verbose:
-                        print("U) Contacting " + url + " ...")
-                    sslcontext = ssl.create_default_context()
-                    if not settings.DATPSSLVERIFY:
-                        if options.verbose:
-                            print("W) You have disabled SSL verification for DATP, " +
-                                  "this is not recommended!")
-                        sslcontext.check_hostname = False
-                        sslcontext.verify_mode = ssl.CERT_NONE
-                    req = urllib.request.Request(url, headers=apiheaders)
-                    try:
-                        response = urllib.request.urlopen(req, context=sslcontext)
-                        jsonResponse = json.loads(response.read().decode('utf-8'))['value']
-                        if options.verbose:
-                            print("U) Got a DATP JSON response package:")
-                            pprint.pprint(jsonResponse)
-                        usertypes = []
-                        for item in jsonResponse:
-                            accountName = item['accountName'].lower()
-                            domainName = item['accountDomain'].lower()
-                            for key in settings.DATPADMAPPING:
-                                addomain = settings.DATPADMAPPING[key]
-                                if domainName == addomain:
-                                    email = accountName + '@' + key
-                                    sslcontext = ssl.create_default_context()
-                                    uri = settings.GRAPHURL + '/users/%s' % email
-                                    uri += '?$select=OnPremisesSamAccountName,'
-                                    uri += 'mail,'
-                                    uri += 'businessPhones,mobilePhone'
-                                    headers = {
-                                        'Content-type': 'application/json',
-                                        'Accept': 'application/json',
-                                        'Authorization': 'Bearer %s' % GRAPHTOKEN,
-                                    }
-                                    request = urllib.request.Request(uri,
-                                                                 headers=headers)
-                                    if not settings.GRAPHSSLVERIFY:
-                                        sslcontext.check_hostname = False
-                                        sslcontext.verify_mode = ssl.CERT_NONE
-                                    if options.verbose:
-                                        print('U) Contacting ' + uri + ' ...')
-                                    response = urllib.request.urlopen(request,
-                                                                      context=sslcontext)
-                                    jsonResponse = json.loads(response.read().decode('utf-8'))
-                                    if options.verbose:
-                                        print("U) Got a DATP JSON response package:")
-                                        pprint.pprint(jsonResponse)
-                                    confidence = entity.CONFIDENCE_HIGH
-                                    if 'onPremisesSamAccountName' in jsonResponse:
-                                        userName = jsonResponse['onPremisesSamAccountName']
-                                        eiqtype = entity.OBSERVABLE_HANDLE
-                                        link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                                        classification = entity.CLASSIFICATION_UNKNOWN
-                                        handle = addomain + '\\'
-                                        handle += userName.lower()
-                                        entity.add_observable(eiqtype,
-                                                              handle,
-                                                              classification=classification,
-                                                              confidence=confidence,
-                                                              link_type=link_type)
-                                        if 'mail' in jsonResponse:
-                                            eiqtype = entity.OBSERVABLE_EMAIL
-                                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                                            classification = entity.CLASSIFICATION_UNKNOWN
-                                            mail = jsonResponse['mail']
-                                            entity.add_observable(eiqtype,
-                                                                  mail,
-                                                                  classification=classification,
-                                                                  confidence=confidence,
-                                                                  link_type=link_type)
-                                        phones = []
-                                        if 'businessPhones' in jsonResponse:
-                                            if jsonResponse['businessPhones']:
-                                                numbers = jsonResponse['businessPhones']
-                                                if isinstance(numbers, list):
-                                                    for number in numbers:
-                                                        phones.append(number)
-                                                else:
-                                                    phones.append(number)
-                                        if 'mobilePhone' in jsonResponse:
-                                            if jsonResponse['mobilePhone']:
-                                                numbers = jsonResponse['mobilePhone']
-                                                if isinstance(numbers, list):
-                                                    for number in numbers:
-                                                        phones.append(number)
-                                                else:
-                                                    phones.append(number)
-                                        if len(phones) > 0:
-                                            for number in phones:
-                                                eiqtype = entity.OBSERVABLE_TELEPHONE
-                                                link_type = entity.OBSERVABLE_LINK_OBSERVED
-                                                classification = entity.CLASSIFICATION_UNKNOWN
-                                                entity.add_observable(eiqtype,
-                                                                      number,
-                                                                      classification=classification,
-                                                                      confidence=confidence,
-                                                                      link_type=link_type)
-                            if item['isDomainAdmin']:
-                                usertypes.append('Domain Admin')
-                            else:
-                                usertypes.append('Normal User')
-                            if item['isOnlyNetworkUser']:
-                                usertypes.append('Only Network')
-                            usertypes.append(item['logonTypes'])
-                            usertype = ', '.join(usertypes)
-                            handles.append((handle, (usertype)))
-                    except urllib.error.HTTPError:
-                        if options.verbose:
-                            print("U) Machine " + machineId + ' is unknown!')
-                url = settings.DATPAPPIDURL + '/machines/' + machineId
-                req = urllib.request.Request(url, headers=apiheaders)
-                ips = []
-                machineInfo = ''
-                osInfo = []
-                try:
-                    response = urllib.request.urlopen(req, context=sslcontext)
-                    jsonResponse = json.loads(response.read().decode('utf-8'))
-                    if options.verbose:
-                        print("U) Got a DATP JSON response package:")
-                        pprint.pprint(jsonResponse)
-                    if 'lastIpAddress' in jsonResponse:
-                        ips.append(jsonResponse['lastIpAddress'])
-                    if 'lastExternalIpAddress' in jsonResponse:
-                        ips.append(jsonResponse['lastExternalIpAddress'])
-                    if 'isAadJoined' in jsonResponse:
-                        if jsonResponse['isAadJoined']:
-                            isAadJoined = 'yes'
-                        else:
-                            isAadJoined = 'unknown'
-                    else:
-                        isAadJoined = 'no'
-                    if 'firstSeen' in jsonResponse:
-                        firstSeen = jsonResponse['firstSeen']
-                    else:
-                        firstSeen = 'unknown'
-                    if 'lastSeen' in jsonResponse:
-                        lastSeen = jsonResponse['lastSeen']
-                    else:
-                        lastSeen = 'unknown'
-                    if 'osPlatform' in jsonResponse:
-                        if jsonResponse['osPlatform']:
-                            osInfo.append('OS: '+str(jsonResponse['osPlatform']))
-                        else:
-                            osInfo.append('Unknown OS')
-                    if 'osBuild' in jsonResponse:
-                        if jsonResponse['osBuild']:
-                            osInfo.append('Build: '+str(jsonResponse['osBuild']))
-                        else:
-                            osInfo.append('Unknown build')
-                    if 'version' in jsonResponse:
-                        if jsonResponse['osVersion']:
-                            osInfo.append('Version: '+str(jsonResponse['version']))
-                        else:
-                            osInfo.append('Unknown version')
-                    if len(osInfo) > 0:
-                        systemInfo = ', '.join(osInfo)
-                    else:
-                        systemInfo = 'unknown'
-                    machineInfo += '<b>IP addresses:</b> '
-                    for ip in ips:
-                        try:
-                            socket.inet_aton(ip)
-                            eiqtype = entity.OBSERVABLE_IPV4
-                        except socket.error:
-                            pass
-                        try:
-                            socket.inet_pton(socket.AF_INET6, ip)
-                            eiqtype = entity.OBSERVABLE_IPV6
-                        except socket.error:
-                            pass
+                    for email in logonUser['mail']:
+                        eiqtype = entity.OBSERVABLE_EMAIL
                         classification = entity.CLASSIFICATION_UNKNOWN
                         confidence = entity.CONFIDENCE_HIGH
                         link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
                         entity.add_observable(eiqtype,
-                                              ip,
+                                              email,
                                               classification=classification,
                                               confidence=confidence,
                                               link_type=link_type)
-                    machineInfo += ', '.join(ips)
-                    machineInfo += '<br />'
-                    machineInfo += '<b>System info:</b>' + systemInfo + '<br />'
-                    machineInfo += '<b>First seen:</b> ' + firstSeen + '<br />'
-                    machineInfo += '<b>Last seen:</b> ' + lastSeen + '<br />'
-                    machineInfo += '<b>Azure AD joined:</b> ' + isAadJoined + '<br />'
-                except urllib.error.HTTPError:
-                    if options.verbose:
-                        print("U) Could not IP information for " + machineId + '!')
-                    raise
-                if len(handles) == 0:
-                    handles.append(('Unknown user', ('unknown account type')))
-                if 'computerDnsName' in datpEvent:
-                    computerDnsName = datpEvent['computerDnsName']
-                    eiqtype = entity.OBSERVABLE_HOST
-                    classification = entity.CLASSIFICATION_UNKNOWN
-                    confidence = entity.CONFIDENCE_HIGH
-                    link_type = entity.OBSERVABLE_LINK_OBSERVED
-                    entity.add_observable(eiqtype,
-                                          computerDnsName,
-                                          classification=classification,
-                                          confidence=confidence,
-                                          link_type=link_type)
+                    for number in logonUser['telephone']:
+                        eiqtype = entity.OBSERVABLE_TELEPHONE
+                        classification = entity.CLASSIFICATION_UNKNOWN
+                        confidence = entity.CONFIDENCE_HIGH
+                        link_type = entity.OBSERVABLE_LINK_OBSERVED
+                        entity.add_observable(eiqtype,
+                                              number,
+                                              classification=classification,
+                                              confidence=confidence,
+                                              link_type=link_type)
+                if threats:
+                    threats = 'Active malware: ' + ', '.join(threats)
                 else:
-                    computerDnsName = 'an unknown system'
-                if datpEvent['investigationState']:
-                    investigationState = datpEvent['investigationState']
-                if datpEvent['threatFamilyName']:
-                    threatFamilyName = datpEvent['threatFamilyName']
-                    eiqtype = entity.OBSERVABLE_MALWARE
-                    classification = entity.CLASSIFICATION_BAD
-                    confidence = entity.CONFIDENCE_HIGH
-                    link_type = entity.OBSERVABLE_LINK_OBSERVED
-                    entity.add_observable(eiqtype,
-                                          threatFamilyName,
-                                          classification=classification,
-                                          confidence=confidence,
-                                          link_type=link_type)
-                else:
-                    threatFamilyName = 'an unknown threat type'
-                title = computerDnsName + ': ' + datpEvent['title']
+                    threats = 'Unknown threat'
+                if not assignees:
+                    assignees = 'nobody'
+                title = hostname + ': ' + threats + ' detected - ' + settings.TITLETAG
+                entity.set_entity_title(title)
                 description = '<h1>Event Description</h1>'
-                description += detectionSource + ' detected a(n) '
-                description += category + ' event on ' + computerDnsName
-                description += ' (' + machineId + ') '
-                description += 'caused by ' + threatFamilyName + '.<br /><br />'
-                description += '<h1>System Information</h1>'
-                description += machineInfo
+                description += 'Threat(s): ' + threats
                 description += '<br />'
-                description += '<h1>System Users</h1>'
-                for account in handles:
-                    handle, usertype = account
+                description += '<table style="border: 1px solid black;">'
+                description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+                description += 'padding: 4px; text-align: center; font-weight: bold;">'
+                description += 'Detection Source(s)'
+                description += '</th>'
+                for detectionSource in detectionSources:
+                    description += '<tr>'
+                    description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                    description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                    description += detectionSource
+                    description += '</td></tr>'
+                description += '</table>'
+                description += '<br />'
+                description += '<table style="border: 1px solid black;">'
+                description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+                description += 'padding: 4px; text-align: center; font-weight: bold;">'
+                description += 'Machine(s)'
+                description += '</th>'
+                for hostname in hostnames:
+                    description += '<tr>'
+                    description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                    description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                    description += hostname
+                    description += '</td></tr>'
+                description += '</table>'
+                description += '<br />'
+                description += '<br />'
+                description += '<table style="border: 1px solid black;">'
+                description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+                description += 'padding: 4px; text-align: center; font-weight: bold;">'
+                description += 'System User(s)'
+                description += '</th>'
+                for handle in handles:
+                    description += '<tr>'
+                    description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                    description += 'padding: 4px; text-align: left; font-weight: bold;">'
                     description += handle
-                    description += ' (' + usertype +')<br />'
+                    description += '</td></tr>'
+                description += '</table>'
                 description += '<br />'
-                description += '<h1>Performed Action(s)</h1>'
-                description += detectionSource + ' action: '
-                description += investigationState + '<br /><br />'
-                description += '<h1>Incident Assignment</h1>'
-                description += 'Assigned to: ' + assignedTo
-                description += '<br /><br />'
-                description += '<h1>Additional Notes</h1>'
-                description += datpEvent['description'].replace('\n', '<br />')
-                entity.set_entity_title(title + " - Event " +
-                                        str(eventID) + " - " +
-                                        settings.TITLETAG)
-                entity.set_entity_observed_time(observedtime)
+                description += '<br />'
+                description += '<table style="border: 1px solid black;">'
+                description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+                description += 'padding: 4px; text-align: center; font-weight: bold;">'
+                description += 'Investigator(s)'
+                description += '</th>'
+                for investigator in assignees:
+                    description += '<tr>'
+                    description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                    description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                    description += investigator
+                    description += '</td></tr>'
+                description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+                description += 'padding: 4px; text-align: center; font-weight: bold;">'
+                description += 'Investigation State(s)'
+                description += '</th>'
+                for investigationState in investigationStates:
+                    description += '<tr>'
+                    description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                    description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                    description += investigationState
+                    description += '</td></tr>'
+                description += '</table>'
+                description += '<h1>Performed Actions</h1>'
                 entity.set_entity_description(description)
-                entity.set_entity_confidence(entity.CONFIDENCE_MEDIUM)
-                if 'severity' in datpEvent:
-                    if datpEvent['severity'] == 'Informational':
-                        entity.set_entity_confidence(entity.CONFIDENCE_LOW)
-                    if datpEvent['severity'] == 'High':
-                        entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
-                uuid = str(eventID) + '-DATP'
+                uuid = str(machineId) + str(entityTime) + '-DATP'
                 entityList.append((entity, uuid))
-            return entityList
-        else:
-            if options.verbose:
-                print("E) An empty result or other error was returned by " +
-                      "DATP. Enable verbosity to see the JSON result that " +
-                      "was returned.")
-    except KeyError:
-        print("E) An empty JSON result or other error was returned " +
-              "by DATP:")
-        print(alerts)
+            return(entityList)
+    except:
         raise
 
+def queryUser(email, options, GRAPHTOKEN):
+    person = {'handle': set(),
+              'mail': set(),
+              'telephone': set()}
+    emailuser, emaildomain = email.split('@')
+    sslcontext = ssl.create_default_context()
+    if not settings.GRAPHSSLVERIFY:
+        if options.verbose:
+            print("W) You have disabled SSL verification for Graph, " +
+                  "this is not recommended!")
+        sslcontext.check_hostname = False
+        sslcontext.verify_mode = ssl.CERT_NONE
+    uri = settings.GRAPHURL + '/users/%s' % email
+    uri += '?$select=OnPremisesSamAccountName,'
+    uri += 'mail,'
+    uri += 'businessPhones,mobilePhone'
+    headers = {
+        'Content-type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer %s' % GRAPHTOKEN,
+    }
+    request = urllib.request.Request(uri, headers=headers)
+    response = urllib.request.urlopen(request, context=sslcontext)
+    jsonResponse = json.loads(response.read().decode('utf-8'))
+    if 'onPremisesSamAccountName' in jsonResponse:
+        addomain = settings.DATPADMAPPING[emaildomain].lower()
+        userName = jsonResponse['onPremisesSamAccountName'].lower()
+        handle = addomain + '\\' + userName
+        person['handle'].add(handle)
+    if 'mail' in jsonResponse:
+        person['mail'].add(jsonResponse['mail'])
+    if 'businessPhones' in jsonResponse:
+        if jsonResponse['businessPhones']:
+            numbers = jsonResponse['businessPhones']
+            if isinstance(numbers, list):
+                for number in numbers:
+                    person['telephone'].add(number)
+            else:
+                person['telephone'].add(number)
+    if 'mobilePhone' in jsonResponse:
+        if jsonResponse['mobilePhone']:
+            numbers = jsonResponse['mobilePhone']
+            if isinstance(numbers, list):
+                for number in numbers:
+                    person['telephone'].add(number)
+            else:
+                person['telephone'].add(number)
+    return(person)
+    '''
+    Take the resulting DATP JSON objects and turn all alerts
+    into a list of EIQ objects.
+    '''
+
+def queryLogonUsers(machineId, options, AADTOKEN, GRAPHTOKEN):
+    '''
+    Attempt to find the logonusers for the system
+    '''
+    apiheaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer ' + AADTOKEN
+    }
+    url = settings.DATPAPPIDURL + '/machines/' + machineId + '/logonusers'
+    if options.verbose:
+        print("U) Contacting " + url + " ...")
+    sslcontext = ssl.create_default_context()
+    if not settings.DATPSSLVERIFY:
+        if options.verbose:
+            print("W) You have disabled SSL verification for DATP, " +
+                  "this is not recommended!")
+        sslcontext.check_hostname = False
+        sslcontext.verify_mode = ssl.CERT_NONE
+    req = urllib.request.Request(url, headers=apiheaders)
+    try:
+        users = []
+        response = urllib.request.urlopen(req, context=sslcontext)
+        jsonResponse = json.loads(response.read().decode('utf-8'))['value']
+        if options.verbose:
+            print("U) Got a DATP JSON response package:")
+            pprint.pprint(jsonResponse)
+        for logonUser in jsonResponse:
+            accountName = logonUser['accountName'].lower()
+            domainName = logonUser['accountDomain'].lower()
+            for key in settings.DATPADMAPPING:
+                addomain = settings.DATPADMAPPING[key]
+                if domainName == addomain:
+                    email = accountName + '@' + key
+                    users.append(queryUser(email, options, GRAPHTOKEN))
+        return(users)
+    except:
+        raise
+
+
+def queryMachineInformation(machineId, options, AADTOKEN):
+    '''
+    Get the system information
+    '''
+    apiheaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer ' + AADTOKEN
+    }
+    url = settings.DATPAPPIDURL + '/machines/' + machineId
+    req = urllib.request.Request(url, headers=apiheaders)
+    ips = set()
+    machineInfo = {'ips': set(),
+                   'hostnames': set(),
+                   'firstSeen': 'unknown',
+                   'lastSeen': 'unknown',
+                   'isAadJoined': False,
+                   'osInfo': 'unknown',
+                   'machineId': machineId}
+    sslcontext = ssl.create_default_context()
+    if not settings.DATPSSLVERIFY:
+        if options.verbose:
+            print("W) You have disabled SSL verification for DATP, " +
+                  "this is not recommended!")
+        sslcontext.check_hostname = False
+        sslcontext.verify_mode = ssl.CERT_NONE
+    req = urllib.request.Request(url, headers=apiheaders)
+    try:
+        response = urllib.request.urlopen(req, context=sslcontext)
+        jsonResponse = json.loads(response.read().decode('utf-8'))
+        if options.verbose:
+            print("U) Got a DATP JSON response package:")
+            pprint.pprint(jsonResponse)
+        if 'computerDnsName' in jsonResponse:
+            machineInfo['hostnames'].add(jsonResponse['computerDnsName'])
+        if 'lastIpAddress' in jsonResponse:
+            machineInfo['ips'].add(jsonResponse['lastIpAddress'])
+        if 'lastExternalIpAddress' in jsonResponse:
+            machineInfo['ips'].add(jsonResponse['lastExternalIpAddress'])
+        if 'isAadJoined' in jsonResponse:
+            if jsonResponse['isAadJoined']:
+                machineInfo['isAadJoined'] = True
+        if 'firstSeen' in jsonResponse:
+            machineInfo['firstSeen'] = jsonResponse['firstSeen']
+        if 'lastSeen' in jsonResponse:
+            machineInfo['lastSeen'] = jsonResponse['lastSeen']
+        if 'osPlatform' in jsonResponse:
+            if jsonResponse['osPlatform']:
+                machineInfo['osInfo'] = 'OS: ' + str(jsonResponse['osPlatform'])
+        if 'osBuild' in jsonResponse:
+            if jsonResponse['osBuild']:
+                machineInfo['osInfo'] += ', build: '+str(jsonResponse['osBuild'])
+        if 'version' in jsonResponse:
+            if jsonResponse['osVersion']:
+                machineInfo['osInfo'] += ', version: '+str(jsonResponse['version'])
+    except urllib.error.HTTPError:
+        if options.verbose:
+            print("U) Could not IP information for " + machineId + '!')
+        raise
+    return(machineInfo)
+'''
+    if datpEvent['investigationState']:
+        investigationState = datpEvent['investigationState']
+    if datpEvent['threatFamilyName']:
+        threatFamilyName = datpEvent['threatFamilyName']
+        eiqtype = entity.OBSERVABLE_MALWARE
+        classification = entity.CLASSIFICATION_BAD
+        confidence = entity.CONFIDENCE_HIGH
+        link_type = entity.OBSERVABLE_LINK_OBSERVED
+        entity.add_observable(eiqtype,
+                              threatFamilyName,
+                              classification=classification,
+                              confidence=confidence,
+                              link_type=link_type)
+    else:
+        threatFamilyName = 'an unknown threat type'
+    title = computerDnsName + ': ' + datpEvent['title']
+    description = '<h1>Event Description</h1>'
+    description += detectionSource + ' detected a(n) '
+    description += category + ' event on ' + computerDnsName
+    description += ' (' + machineId + ') '
+    description += 'caused by ' + threatFamilyName + '.<br /><br />'
+    description += '<h1>System Information</h1>'
+    description += machineInfo
+    description += '<br />'
+    description += '<h1>System Users</h1>'
+    for account in handles:
+        handle, usertype = account
+        description += handle
+        description += ' (' + usertype +')<br />'
+    description += '<br />'
+    description += '<h1>Performed Action(s)</h1>'
+    description += detectionSource + ' action: '
+    description += investigationState + '<br /><br />'
+    description += '<h1>Incident Assignment</h1>'
+    description += 'Assigned to: ' + assignedTo
+    description += '<br /><br />'
+    description += '<h1>Additional Notes</h1>'
+    description += datpEvent['description'].replace('\n', '<br />')
+    entity.set_entity_title(title + " - Event " +
+                            str(eventID) + " - " +
+                            settings.TITLETAG)
+    entity.set_entity_observed_time(observedtime)
+    entity.set_entity_description(description)
+    entity.set_entity_confidence(entity.CONFIDENCE_MEDIUM)
+    if 'severity' in datpEvent:
+        if datpEvent['severity'] == 'Informational':
+            entity.set_entity_confidence(entity.CONFIDENCE_LOW)
+        if datpEvent['severity'] == 'High':
+            entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
+    uuid = str(eventID) + '-DATP'
+    entityList.append((entity, uuid))
+'''
 
 def eiqIngest(eiqJSON, uuid, options):
     '''
