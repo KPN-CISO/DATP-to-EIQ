@@ -197,10 +197,10 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                           classification=classification,
                                           confidence=confidence,
                                           link_type=link_type)
-            if not assignees:
+            if len(assignees) == 0:
                 assignees.add('nobody')
             title = hostname + ': '
-            if threats:
+            if len(threats) > 0:
                 title += 'Threats: ' + ', '.join(threats)
             else:
                 threats.add('Potential malware')
