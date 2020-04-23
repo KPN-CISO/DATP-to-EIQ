@@ -189,7 +189,7 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                     confidence = entity.CONFIDENCE_HIGH
                     link_type = entity.OBSERVABLE_LINK_OBSERVED
                     entity.add_observable(eiqtype,
-                                          number,
+                                          number.replace(' ', ''),
                                           classification=classification,
                                           confidence=confidence,
                                           link_type=link_type)
@@ -319,17 +319,17 @@ def queryUser(email, options, GRAPHTOKEN):
             numbers = jsonResponse['businessPhones']
             if isinstance(numbers, list):
                 for number in numbers:
-                    person['telephone'].add(number.strip(' '))
+                    person['telephone'].add(number)
             else:
-                person['telephone'].add(numbers.strip(' '))
+                person['telephone'].add(numbers)
     if 'mobilePhone' in jsonResponse:
         if jsonResponse['mobilePhone']:
             numbers = jsonResponse['mobilePhone']
             if isinstance(numbers, list):
                 for number in numbers:
-                    person['telephone'].add(number.strip(' '))
+                    person['telephone'].add(number)
             else:
-                person['telephone'].add(numbers.strip(' '))
+                person['telephone'].add(numbers)
     return(person)
     '''
     Take the resulting DATP JSON objects and turn all alerts
@@ -590,7 +590,6 @@ def main():
         GRAPHTOKEN = graph.generateGraphToken(args, settings)
         if GRAPHTOKEN:
             entities = transform(alerts, args, AADTOKEN, GRAPHTOKEN)
-            print(entities)
             if entities:
                 for entity, uuid in entities:
                     if args.verbose:
