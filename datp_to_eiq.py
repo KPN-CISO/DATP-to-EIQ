@@ -100,11 +100,9 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             if ('active malware detected' or 'hacktool was detected') in titles:
                 eventType = 'Incident'
                 entity.set_entity(entity.ENTITY_INCIDENT)
-                print(eventType)
             else:
                 eventType = 'Sighting'
                 entity.set_entity(entity.ENTITY_SIGHTING)
-                print(eventType)
             entity.set_entity_tlp('amber')
             entity.set_entity_source(settings.EIQSOURCE)
             entity.set_entity_observed_time(entityTime + 'Z')
