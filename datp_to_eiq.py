@@ -312,7 +312,7 @@ def queryUser(email, options, GRAPHTOKEN):
                 for number in numbers:
                     person['telephone'].add(number)
             else:
-                person['telephone'].add(number)
+                person['telephone'].add(numbers)
     if 'mobilePhone' in jsonResponse:
         if jsonResponse['mobilePhone']:
             numbers = jsonResponse['mobilePhone']
@@ -320,7 +320,7 @@ def queryUser(email, options, GRAPHTOKEN):
                 for number in numbers:
                     person['telephone'].add(number)
             else:
-                person['telephone'].add(number)
+                person['telephone'].add(numbers)
     return(person)
     '''
     Take the resulting DATP JSON objects and turn all alerts
