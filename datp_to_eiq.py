@@ -97,7 +97,7 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             entity with all relevant information
             '''
             entity = eiqjson.EIQEntity()
-            if ('active malware detected' or 'hacktool was detected') in titles:
+            if 'active malware detected' in titles or 'hacktool was detected' in titles:
                 eventType = 'Incident'
                 entity.set_entity(entity.ENTITY_INCIDENT)
             else:
