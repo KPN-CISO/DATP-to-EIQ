@@ -28,251 +28,248 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
     '''
     if options.verbose:
         print("U) Merging correlated DATP Events ...")
-    try:
-        if len(alerts) > 0:
-            machineIds = dict()
-            entityList = []
-            for datpEvent in alerts:
-                eventId = datpEvent['id']
-                machineId = datpEvent['machineId']
-                if not machineId in machineIds:
-                    machineIds[machineId] = set()
-                machineIds[machineId].add(eventId)
-            for machineId in machineIds:
-                entityTime = str(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
-                assignees = set()
-                categories = set()
-                detectionSources = set()
-                threats = set()
-                investigationStates = set()
-                severities = set()
-                titles = set()
-                handles = set()
-                hostnames = set()
-                machineInfo = queryMachineInformation(machineId,
-                                                      options,
-                                                      AADTOKEN)
-                logonUsers = queryLogonUsers(machineId,
-                                             options,
-                                             AADTOKEN,
-                                             GRAPHTOKEN)
-                for eventId in machineIds[machineId]:
-                    for datpEvent in alerts:
-                        if eventId == datpEvent['id']:
-                            '''
-                            Now grab all related fields from all events
-                            '''
-                            if 'alertCreationTime' in datpEvent:
-                                alertCreationTime = datpEvent['alertCreationTime'].split('.')[0]
-                                if alertCreationTime < entityTime:
-                                    entityTime = alertCreationTime
-                            if 'category' in datpEvent:
-                                categories.add(datpEvent['category'])
-                            if 'detectionSource' in datpEvent:
-                                detectionSources.add(datpEvent['detectionSource'])
-                            if 'assignedTo' in datpEvent:
-                                if datpEvent['assignedTo']:
-                                    assignees.add(datpEvent['assignedTo'])
-                            if 'relatedUser' in datpEvent:
-                                if datpEvent['relatedUser']:
-                                    userName = datpEvent['relatedUser']['userName'].lower()
-                                    domainName = datpEvent['relatedUser']['domainName'].lower()
-                                    handle = domainName + '\\' + userName
-                                    handles.add(handle)
-                            if 'investigationState' in datpEvent:
-                                if datpEvent['investigationState']:
-                                    investigationStates.add(datpEvent['investigationState'])
-                            if 'severity' in datpEvent:
-                                if datpEvent['severity']:
-                                    severities.add(datpEvent['severity'])
-                            if 'title' in datpEvent:
-                                if datpEvent['title']:
-                                    titles.add(datpEvent['title'].lower())
-                            if 'threatFamilyName' in datpEvent:
-                                if datpEvent['threatFamilyName']:
-                                    threats.add(datpEvent['threatFamilyName'])
-                            else:
-                                threats.add('unknown')
-                '''
-                All machine information collected, now build the EclecticIQ
-                entity with all relevant information
-                '''
-                entity = eiqjson.EIQEntity()
-                if 'active malware detected' or 'hacktool was detected' in titles:
-                    entity.set_entity(entity.ENTITY_INCIDENT)
-                else:
-                    entity.set_entity(entity.ENTITY_SIGHTING)
-                entity.set_entity_source(settings.EIQSOURCE)
-                entity.set_entity_observed_time(entityTime + 'Z')
-                if 'High' in severities:
-                    entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
-                elif 'Informational' in severities:
-                    entity.set_entity_confidence(entity.CONFIDENCE_LOW)
-                else:
-                    entity.set_entity_confidence(entity.CONFIDENCE_MEDIUM)
-                for hostname in machineInfo['hostnames']:
-                    hostnames.add(hostname)
-                    eiqtype = entity.OBSERVABLE_HOST
-                    classification = entity.CLASSIFICATION_UNKNOWN
-                    confidence = entity.CONFIDENCE_HIGH
-                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                    entity.add_observable(eiqtype,
-                                          hostname,
-                                          classification=classification,
-                                          confidence=confidence,
-                                          link_type=link_type)
-                for ip in machineInfo['ips']:
-                    try:
-                        socket.inet_aton(ip)
-                        eiqtype = entity.OBSERVABLE_IPV4
-                    except socket.error:
-                        pass
-                    try:
-                        socket.inet_pton(socket.AF_INET6, ip)
-                        eiqtype = entity.OBSERVABLE_IPV6
-                    except socket.error:
-                        pass
-                    classification = entity.CLASSIFICATION_UNKNOWN
-                    confidence = entity.CONFIDENCE_HIGH
-                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                    entity.add_observable(eiqtype,
-                                          ip,
-                                          classification=classification,
-                                          confidence=confidence,
-                                          link_type=link_type)
-                for threat in threats:
-                    eiqtype = entity.OBSERVABLE_MALWARE
-                    classification = entity.CLASSIFICATION_BAD
-                    confidence = entity.CONFIDENCE_HIGH
-                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                    entity.add_observable(eiqtype,
-                                          threat,
-                                          classification=classification,
-                                          confidence=confidence,
-                                          link_type=link_type)
-                for handle in handles:
+    if len(alerts) > 0:
+        machineIds = dict()
+        entityList = []
+        for datpEvent in alerts:
+            eventId = datpEvent['id']
+            machineId = datpEvent['machineId']
+            if not machineId in machineIds:
+                machineIds[machineId] = set()
+            machineIds[machineId].add(eventId)
+        for machineId in machineIds:
+            entityTime = str(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
+            assignees = set()
+            categories = set()
+            detectionSources = set()
+            threats = set()
+            investigationStates = set()
+            severities = set()
+            titles = set()
+            handles = set()
+            hostnames = set()
+            machineInfo = queryMachineInformation(machineId,
+                                                  options,
+                                                  AADTOKEN)
+            logonUsers = queryLogonUsers(machineId,
+                                         options,
+                                         AADTOKEN,
+                                         GRAPHTOKEN)
+            for eventId in machineIds[machineId]:
+                for datpEvent in alerts:
+                    if eventId == datpEvent['id']:
+                        '''
+                        Now grab all related fields from all events
+                        '''
+                        if 'alertCreationTime' in datpEvent:
+                            alertCreationTime = datpEvent['alertCreationTime'].split('.')[0]
+                            if alertCreationTime < entityTime:
+                                entityTime = alertCreationTime
+                        if 'category' in datpEvent:
+                            categories.add(datpEvent['category'])
+                        if 'detectionSource' in datpEvent:
+                            detectionSources.add(datpEvent['detectionSource'])
+                        if 'assignedTo' in datpEvent:
+                            if datpEvent['assignedTo']:
+                                assignees.add(datpEvent['assignedTo'])
+                        if 'relatedUser' in datpEvent:
+                            if datpEvent['relatedUser']:
+                                userName = datpEvent['relatedUser']['userName'].lower()
+                                domainName = datpEvent['relatedUser']['domainName'].lower()
+                                handle = domainName + '\\' + userName
+                                handles.add(handle)
+                        if 'investigationState' in datpEvent:
+                            if datpEvent['investigationState']:
+                                investigationStates.add(datpEvent['investigationState'])
+                        if 'severity' in datpEvent:
+                            if datpEvent['severity']:
+                                severities.add(datpEvent['severity'])
+                        if 'title' in datpEvent:
+                            if datpEvent['title']:
+                                titles.add(datpEvent['title'].lower())
+                        if 'threatFamilyName' in datpEvent:
+                            if datpEvent['threatFamilyName']:
+                                threats.add(datpEvent['threatFamilyName'])
+                        else:
+                            threats.add('unknown')
+            '''
+            All machine information collected, now build the EclecticIQ
+            entity with all relevant information
+            '''
+            entity = eiqjson.EIQEntity()
+            if 'active malware detected' or 'hacktool was detected' in titles:
+                entity.set_entity(entity.ENTITY_INCIDENT)
+            else:
+                entity.set_entity(entity.ENTITY_SIGHTING)
+            entity.set_entity_source(settings.EIQSOURCE)
+            entity.set_entity_observed_time(entityTime + 'Z')
+            if 'High' in severities:
+                entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
+            elif 'Informational' in severities:
+                entity.set_entity_confidence(entity.CONFIDENCE_LOW)
+            else:
+                entity.set_entity_confidence(entity.CONFIDENCE_MEDIUM)
+            for hostname in machineInfo['hostnames']:
+                hostnames.add(hostname)
+                eiqtype = entity.OBSERVABLE_HOST
+                classification = entity.CLASSIFICATION_UNKNOWN
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      hostname,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for ip in machineInfo['ips']:
+                try:
+                    socket.inet_aton(ip)
+                    eiqtype = entity.OBSERVABLE_IPV4
+                except socket.error:
+                    pass
+                try:
+                    socket.inet_pton(socket.AF_INET6, ip)
+                    eiqtype = entity.OBSERVABLE_IPV6
+                except socket.error:
+                    pass
+                classification = entity.CLASSIFICATION_UNKNOWN
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      ip,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for threat in threats:
+                eiqtype = entity.OBSERVABLE_MALWARE
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      threat,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for handle in handles:
+                eiqtype = entity.OBSERVABLE_HANDLE
+                classification = entity.CLASSIFICATION_UNKNOWN
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      threat,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for logonUser in logonUsers:
+                for handle in logonUser['handle']:
+                    handles.add(handle)
                     eiqtype = entity.OBSERVABLE_HANDLE
                     classification = entity.CLASSIFICATION_UNKNOWN
                     confidence = entity.CONFIDENCE_HIGH
                     link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
                     entity.add_observable(eiqtype,
-                                          threat,
+                                          handle,
                                           classification=classification,
                                           confidence=confidence,
                                           link_type=link_type)
-                for logonUser in logonUsers:
-                    for handle in logonUser['handle']:
-                        handles.add(handle)
-                        eiqtype = entity.OBSERVABLE_HANDLE
-                        classification = entity.CLASSIFICATION_UNKNOWN
-                        confidence = entity.CONFIDENCE_HIGH
-                        link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                        entity.add_observable(eiqtype,
-                                              handle,
-                                              classification=classification,
-                                              confidence=confidence,
-                                              link_type=link_type)
-                    for email in logonUser['mail']:
-                        eiqtype = entity.OBSERVABLE_EMAIL
-                        classification = entity.CLASSIFICATION_UNKNOWN
-                        confidence = entity.CONFIDENCE_HIGH
-                        link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                        entity.add_observable(eiqtype,
-                                              email,
-                                              classification=classification,
-                                              confidence=confidence,
-                                              link_type=link_type)
-                    for number in logonUser['telephone']:
-                        eiqtype = entity.OBSERVABLE_TELEPHONE
-                        classification = entity.CLASSIFICATION_UNKNOWN
-                        confidence = entity.CONFIDENCE_HIGH
-                        link_type = entity.OBSERVABLE_LINK_OBSERVED
-                        entity.add_observable(eiqtype,
-                                              number,
-                                              classification=classification,
-                                              confidence=confidence,
-                                              link_type=link_type)
-                if threats:
-                    threats = 'Active malware: ' + ', '.join(threats)
-                else:
-                    threats = 'Unknown threat'
-                if not assignees:
-                    assignees = 'nobody'
-                title = hostname + ': ' + threats + ' detected - ' + settings.TITLETAG
-                entity.set_entity_title(title)
-                description = '<h1>Event Description</h1>'
-                description += 'Threat(s): ' + threats
-                description += '<br />'
-                description += '<table style="border: 1px solid black;">'
-                description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
-                description += 'padding: 4px; text-align: center; font-weight: bold;">'
-                description += 'Detection Source(s)'
-                description += '</th>'
-                for detectionSource in detectionSources:
-                    description += '<tr>'
-                    description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                    description += 'padding: 4px; text-align: left; font-weight: bold;">'
-                    description += detectionSource
-                    description += '</td></tr>'
-                description += '</table>'
-                description += '<br />'
-                description += '<table style="border: 1px solid black;">'
-                description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
-                description += 'padding: 4px; text-align: center; font-weight: bold;">'
-                description += 'Machine(s)'
-                description += '</th>'
-                for hostname in hostnames:
-                    description += '<tr>'
-                    description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                    description += 'padding: 4px; text-align: left; font-weight: bold;">'
-                    description += hostname
-                    description += '</td></tr>'
-                description += '</table>'
-                description += '<br />'
-                description += '<br />'
-                description += '<table style="border: 1px solid black;">'
-                description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
-                description += 'padding: 4px; text-align: center; font-weight: bold;">'
-                description += 'System User(s)'
-                description += '</th>'
-                for handle in handles:
-                    description += '<tr>'
-                    description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                    description += 'padding: 4px; text-align: left; font-weight: bold;">'
-                    description += handle
-                    description += '</td></tr>'
-                description += '</table>'
-                description += '<br />'
-                description += '<br />'
-                description += '<table style="border: 1px solid black;">'
-                description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
-                description += 'padding: 4px; text-align: center; font-weight: bold;">'
-                description += 'Investigator(s)'
-                description += '</th>'
-                for investigator in assignees:
-                    description += '<tr>'
-                    description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                    description += 'padding: 4px; text-align: left; font-weight: bold;">'
-                    description += investigator
-                    description += '</td></tr>'
-                description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
-                description += 'padding: 4px; text-align: center; font-weight: bold;">'
-                description += 'Investigation State(s)'
-                description += '</th>'
-                for investigationState in investigationStates:
-                    description += '<tr>'
-                    description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                    description += 'padding: 4px; text-align: left; font-weight: bold;">'
-                    description += investigationState
-                    description += '</td></tr>'
-                description += '</table>'
-                description += '<h1>Performed Actions</h1>'
-                entity.set_entity_description(description)
-                uuid = str(machineId) + str(entityTime) + '-DATP'
-                entityList.append((entity, uuid))
-            return(entityList)
-    except:
-        raise
+                for email in logonUser['mail']:
+                    eiqtype = entity.OBSERVABLE_EMAIL
+                    classification = entity.CLASSIFICATION_UNKNOWN
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                    entity.add_observable(eiqtype,
+                                          email,
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
+                for number in logonUser['telephone']:
+                    eiqtype = entity.OBSERVABLE_TELEPHONE
+                    classification = entity.CLASSIFICATION_UNKNOWN
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_OBSERVED
+                    entity.add_observable(eiqtype,
+                                          number,
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
+            if threats:
+                threats = 'Active malware: ' + ', '.join(threats)
+            else:
+                threats = 'Unknown threat'
+            if not assignees:
+                assignees = 'nobody'
+            title = hostname + ': ' + threats + ' detected - ' + settings.TITLETAG
+            entity.set_entity_title(title)
+            description = '<h1>Event Description</h1>'
+            description += 'Threat(s): ' + threats
+            description += '<br />'
+            description += '<table style="border: 1px solid black;">'
+            description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+            description += 'padding: 4px; text-align: center; font-weight: bold;">'
+            description += 'Detection Source(s)'
+            description += '</th>'
+            for detectionSource in detectionSources:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                description += detectionSource
+                description += '</td></tr>'
+            description += '</table>'
+            description += '<br />'
+            description += '<table style="border: 1px solid black;">'
+            description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+            description += 'padding: 4px; text-align: center; font-weight: bold;">'
+            description += 'Machine(s)'
+            description += '</th>'
+            for hostname in hostnames:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                description += hostname
+                description += '</td></tr>'
+            description += '</table>'
+            description += '<br />'
+            description += '<br />'
+            description += '<table style="border: 1px solid black;">'
+            description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+            description += 'padding: 4px; text-align: center; font-weight: bold;">'
+            description += 'System User(s)'
+            description += '</th>'
+            for handle in handles:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                description += handle
+                description += '</td></tr>'
+            description += '</table>'
+            description += '<br />'
+            description += '<br />'
+            description += '<table style="border: 1px solid black;">'
+            description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+            description += 'padding: 4px; text-align: center; font-weight: bold;">'
+            description += 'Investigator(s)'
+            description += '</th>'
+            for investigator in assignees:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                description += investigator
+                description += '</td></tr>'
+            description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+            description += 'padding: 4px; text-align: center; font-weight: bold;">'
+            description += 'Investigation State(s)'
+            description += '</th>'
+            for investigationState in investigationStates:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left; font-weight: bold;">'
+                description += investigationState
+                description += '</td></tr>'
+            description += '</table>'
+            description += '<h1>Performed Actions</h1>'
+            entity.set_entity_description(description)
+            uuid = str(machineId) + str(entityTime) + '-DATP'
+            entityList.append((entity, uuid))
+    return(entityList)
 
 def queryUser(email, options, GRAPHTOKEN):
     person = {'handle': set(),
@@ -581,6 +578,7 @@ def main():
         GRAPHTOKEN = graph.generateGraphToken(args, settings)
         if GRAPHTOKEN:
             entities = transform(alerts, args, AADTOKEN, GRAPHTOKEN)
+            print(entities)
             if entities:
                 for entity, uuid in entities:
                     if args.verbose:
