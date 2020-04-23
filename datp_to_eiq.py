@@ -442,6 +442,7 @@ def queryMachineInformation(machineId, options, AADTOKEN):
         raise
     return(machineInfo)
 
+
 def eiqIngest(eiqJSON, uuid, options):
     '''
     Ingest the provided eiqJSON object into EIQ with the UUID provided
