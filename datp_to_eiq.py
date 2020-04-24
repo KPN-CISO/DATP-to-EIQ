@@ -199,6 +199,8 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                           link_type=link_type)
             if len(assignees) == 0:
                 assignees.add('nobody')
+            if len(handes) == 0:
+                handles.add('unknown')
             title = hostname + ': '
             if len(threats) > 0:
                 title += 'Threats: ' + ', '.join(threats)
