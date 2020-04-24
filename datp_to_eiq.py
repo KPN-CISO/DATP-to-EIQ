@@ -127,7 +127,8 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                       confidence=confidence,
                                       link_type=link_type)
             for ip in machineInfo['ips']:
-                if ip:
+                if ip != None:
+                    print(ip)
                     try:
                         socket.inet_aton(ip)
                         eiqtype = entity.OBSERVABLE_IPV4
