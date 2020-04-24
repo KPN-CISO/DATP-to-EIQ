@@ -127,24 +127,25 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                       confidence=confidence,
                                       link_type=link_type)
             for ip in machineInfo['ips']:
-                try:
-                    socket.inet_aton(ip)
-                    eiqtype = entity.OBSERVABLE_IPV4
-                except socket.error:
-                    pass
-                try:
-                    socket.inet_pton(socket.AF_INET6, ip)
-                    eiqtype = entity.OBSERVABLE_IPV6
-                except socket.error:
-                    pass
-                classification = entity.CLASSIFICATION_UNKNOWN
-                confidence = entity.CONFIDENCE_HIGH
-                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                entity.add_observable(eiqtype,
-                                      ip,
-                                      classification=classification,
-                                      confidence=confidence,
-                                      link_type=link_type)
+                if ip:
+                    try:
+                        socket.inet_aton(ip)
+                        eiqtype = entity.OBSERVABLE_IPV4
+                    except socket.error:
+                        pass
+                    try:
+                        socket.inet_pton(socket.AF_INET6, ip)
+                        eiqtype = entity.OBSERVABLE_IPV6
+                    except socket.error:
+                        pass
+                    classification = entity.CLASSIFICATION_UNKNOWN
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                    entity.add_observable(eiqtype,
+                                          ip,
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
             for threat in threats:
                 eiqtype = entity.OBSERVABLE_MALWARE
                 classification = entity.CLASSIFICATION_BAD
