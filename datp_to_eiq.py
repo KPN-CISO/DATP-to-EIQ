@@ -161,7 +161,7 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                 confidence = entity.CONFIDENCE_HIGH
                 link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
                 entity.add_observable(eiqtype,
-                                      threat,
+                                      handle,
                                       classification=classification,
                                       confidence=confidence,
                                       link_type=link_type)
