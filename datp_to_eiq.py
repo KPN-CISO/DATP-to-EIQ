@@ -283,7 +283,7 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                 description += '</td></tr>'
             description += '</table>'
             entity.set_entity_description(description)
-            uuid = str(machineId) + str(title) + '-DATP'
+            uuid = str(machineId) + '-DATP'
             entityList.append((entity, uuid))
     return(entityList)
 
