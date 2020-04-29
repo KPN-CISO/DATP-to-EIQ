@@ -439,10 +439,14 @@ def queryMachineInformation(machineId, options, AADTOKEN):
         if 'version' in jsonResponse:
             if jsonResponse['osVersion']:
                 machineInfo['osInfo'] += ', version: '+str(jsonResponse['version'])
-    except urllib.error.HTTPError:
-        if options.verbose:
-            print("U) Could not IP information for " + machineId + '!')
-        raise
+    except urllib.error.HTTPError as e:
+        reason = e.reason
+        if reason == "Not Found":
+            '''
+            Handle machines that are not found
+            '''
+            if options.verbose:
+                print("U) Could not IP information for " + machineId + '!')
     return(machineInfo)
 
 
