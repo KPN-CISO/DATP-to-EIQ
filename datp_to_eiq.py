@@ -60,10 +60,13 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             detectionSource = alert['Source']
             threatName = alert['ThreatName']
             handles = set()
-            userName = alert['UserName'].lower()
-            userDomain = alert['UserDomain'].lower()
-            handle = userDomain + '\\' + userName
-            handles.add(handle)
+            if alert['UserName']:
+                userName = alert['UserName'].lower()
+            if alert['UserDomain']:
+                userDomain = alert['UserDomain'].lower()
+            if userName and userDomain:
+                handle = userDomain + '\\' + userName
+                handles.add(handle)
             entity = eiqjson.EIQEntity()
             if 'informational' in severity:
                 eventType = 'Sighting'
