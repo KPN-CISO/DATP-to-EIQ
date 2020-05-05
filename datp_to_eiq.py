@@ -21,101 +21,60 @@ from graphlib import graph
 from config import settings
 
 
-def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
+def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
     '''
     First, merge all alerts from the time period of one machine
     into a single event
     '''
     if options.verbose:
-        print("U) Merging correlated DATP Events ...")
+        print("U) Processing DATP Events ...")
     if len(alerts) > 0:
-        machineIds = dict()
-        entityList = []
-        for datpEvent in alerts:
-            eventId = datpEvent['id']
-            machineId = datpEvent['machineId']
-            if not machineId in machineIds:
-                machineIds[machineId] = set()
-            machineIds[machineId].add(eventId)
-        for machineId in machineIds:
-            entityTime = str(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
-            assignees = set()
-            categories = set()
-            detectionSources = set()
-            threats = set()
-            investigationStates = set()
-            severities = set()
-            titles = set()
-            handles = set()
+        for alert in alerts:
+            actor = alert['Actor']
+            alertTime = alert['AlertTime'].split('.')[0]
+            alertTitle = alert['AlertTitle'].lower()
+            category = alert['Category']
             hostnames = set()
-            machineInfo = queryMachineInformation(machineId,
-                                                  options,
-                                                  AADTOKEN)
-            logonUsers = queryLogonUsers(machineId,
+            if alert['ComputerDnsName']:
+                hostname = alert['ComputerDnsName']
+            deviceid = alert['DeviceID']
+            '''
+            logonUsers = queryLogonUsers(deviceid,
                                          options,
-                                         AADTOKEN,
+                                         MSSCTOKEN,
                                          GRAPHTOKEN)
-            for eventId in machineIds[machineId]:
-                for datpEvent in alerts:
-                    if eventId == datpEvent['id']:
-                        '''
-                        Now grab all related fields from all events
-                        '''
-                        if 'alertCreationTime' in datpEvent:
-                            alertCreationTime = datpEvent['alertCreationTime'].split('.')[0]
-                            if alertCreationTime < entityTime:
-                                entityTime = alertCreationTime
-                        if 'category' in datpEvent:
-                            categories.add(datpEvent['category'])
-                        if 'detectionSource' in datpEvent:
-                            detectionSources.add(datpEvent['detectionSource'])
-                        if 'assignedTo' in datpEvent:
-                            if datpEvent['assignedTo']:
-                                assignees.add(datpEvent['assignedTo'])
-                        if 'relatedUser' in datpEvent:
-                            if datpEvent['relatedUser']:
-                                userName = datpEvent['relatedUser']['userName'].lower()
-                                domainName = datpEvent['relatedUser']['domainName'].lower()
-                                handle = domainName + '\\' + userName
-                                handles.add(handle)
-                        if 'investigationState' in datpEvent:
-                            if datpEvent['investigationState']:
-                                investigationStates.add(datpEvent['investigationState'])
-                        if 'severity' in datpEvent:
-                            if datpEvent['severity']:
-                                severities.add(datpEvent['severity'])
-                        if 'title' in datpEvent:
-                            if datpEvent['title']:
-                                titles.add(datpEvent['title'].lower())
-                        if 'threatFamilyName' in datpEvent:
-                            if datpEvent['threatFamilyName']:
-                                threats.add(datpEvent['threatFamilyName'])
             '''
-            All machine information collected, now build the EclecticIQ
-            entity with all relevant information
-            '''
+            machineId = alert['MachineName']
+            ipv4 = alert['InternalIPv4List'].split(';')
+            ipv6 = alert['InternalIPv6List'].split(';')
+            ipaddresses = alert['IpAddress'].split(';')
+            urls = alert['Url'].split(';')
+            md5 = alert['Md5']
+            sha1 = alert['Sha1']
+            sha256 = alert['Sha256']
+            remediations = set()
+            if alert['RemediationAction']:
+                remediations.add(alert['RemediationAction'])
+            severity = alert['Severity'].lower()
+            detectionSource = alert['Source']
+            threatName = alert['ThreatName']
+            handles = set()
+            userName = alert['UserName'].lower()
+            userDomain = alert['UserDomain'].lower()
+            handle = userDomain + '\\' + userName
+            handles.add(handle)
             entity = eiqjson.EIQEntity()
-            if 'active malware detected' in titles or \
-               'hacktool was detected' in titles or \
-               'an active ' in titles:
-                eventType = 'Incident'
-                entity.set_entity(entity.ENTITY_INCIDENT)
-            elif 'malware detected' in titles:
-                eventType = 'Incident'
-                entity.set_entity(entity.ENTITY_INCIDENT)
-            else:
+            if 'informational' in severity:
                 eventType = 'Sighting'
                 entity.set_entity(entity.ENTITY_SIGHTING)
+            else:
+                eventType = 'Incident'
+                entity.set_entity(entity.ENTITY_INCIDENT)
             entity.set_entity_tlp('amber')
             entity.set_entity_source(settings.EIQSOURCE)
-            entity.set_entity_observed_time(entityTime + 'Z')
-            if 'High' in severities:
-                entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
-            elif 'Informational' in severities:
-                entity.set_entity_confidence(entity.CONFIDENCE_LOW)
-            else:
-                entity.set_entity_confidence(entity.CONFIDENCE_MEDIUM)
-            for hostname in machineInfo['hostnames']:
+            entity.set_entity_observed_time(alertTime + 'Z')
+            entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
+            for hostname in hostnames:
                 hostnames.add(hostname)
                 eiqtype = entity.OBSERVABLE_HOST
                 classification = entity.CLASSIFICATION_UNKNOWN
@@ -126,18 +85,8 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                       classification=classification,
                                       confidence=confidence,
                                       link_type=link_type)
-            for ip in machineInfo['ips']:
-                if ip != None:
-                    try:
-                        socket.inet_aton(ip)
-                        eiqtype = entity.OBSERVABLE_IPV4
-                    except socket.error:
-                        pass
-                    try:
-                        socket.inet_pton(socket.AF_INET6, ip)
-                        eiqtype = entity.OBSERVABLE_IPV6
-                    except socket.error:
-                        pass
+            for ip in ipv4:
+                    eiqtype = entity.OBSERVABLE_IPV4
                     classification = entity.CLASSIFICATION_UNKNOWN
                     confidence = entity.CONFIDENCE_HIGH
                     link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
@@ -146,13 +95,63 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                           classification=classification,
                                           confidence=confidence,
                                           link_type=link_type)
-            for threat in threats:
-                eiqtype = entity.OBSERVABLE_MALWARE
+            for ip in ipv6:
+                    eiqtype = entity.OBSERVABLE_IPV6
+                    classification = entity.CLASSIFICATION_UNKNOWN
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                    entity.add_observable(eiqtype,
+                                          ip,
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
+            if md5:
+                eiqtype = entity.OBSERVABLE_MD5
                 classification = entity.CLASSIFICATION_BAD
                 confidence = entity.CONFIDENCE_HIGH
                 link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
                 entity.add_observable(eiqtype,
-                                      threat,
+                                      md5,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            if sha1:
+                eiqtype = entity.OBSERVABLE_SHA1
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      sha1,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            if sha256:
+                eiqtype = entity.OBSERVABLE_SHA256
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      sha256,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            if actor:
+                eiqtype = entity.OBSERVABLE_ACTOR
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_OBSERVED
+                entity.add_observable(eiqtype,
+                                      actor,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            if threatName:
+                eiqtype = entity.OBSERVABLE_MALWARE
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_OBSERVED
+                entity.add_observable(eiqtype,
+                                      threatName,
                                       classification=classification,
                                       confidence=confidence,
                                       link_type=link_type)
@@ -166,7 +165,8 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                       classification=classification,
                                       confidence=confidence,
                                       link_type=link_type)
-            for logonUser in logonUsers:
+            '''
+            for handle in logonUsers:
                 for handle in logonUser['handle']:
                     handles.add(handle)
                     eiqtype = entity.OBSERVABLE_HANDLE
@@ -198,16 +198,13 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                                           classification=classification,
                                           confidence=confidence,
                                           link_type=link_type)
-            if len(assignees) == 0:
-                assignees.add('nobody')
+                '''
             if len(handles) == 0:
                 handles.add('unknown')
             title = hostname + ': '
-            if len(threats) > 0:
-                title += 'Threats: ' + ', '.join(threats)
-            else:
-                threats.add('Potential malware')
-                title += 'Potential malware'
+            if not threatName:
+                threatName = 'Potential malware'
+            title += threatName
             title += ' detected - ' + settings.TITLETAG
             entity.set_entity_title(title)
             description = '<h1>Description of ' + eventType + '</h1>'
@@ -216,12 +213,11 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             description += 'padding: 4px; text-align: center; font-weight: bold;">'
             description += 'Threat(s)'
             description += '</th>'
-            for threat in threats:
-                description += '<tr>'
-                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                description += 'padding: 4px; text-align: left;">'
-                description += threat
-                description += '</td></tr>'
+            description += '<tr>'
+            description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+            description += 'padding: 4px; text-align: left;">'
+            description += threatName
+            description += '</td></tr>'
             description += '</table>'
             description += '<br />'
             description += '<table style="border: 1px solid black;">'
@@ -229,12 +225,11 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             description += 'padding: 4px; text-align: center; font-weight: bold;">'
             description += 'Detection Source(s)'
             description += '</th>'
-            for detectionSource in detectionSources:
-                description += '<tr>'
-                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                description += 'padding: 4px; text-align: left;">'
-                description += detectionSource
-                description += '</td></tr>'
+            description += '<tr>'
+            description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+            description += 'padding: 4px; text-align: left;">'
+            description += detectionSource
+            description += '</td></tr>'
             description += '</table>'
             description += '<br />'
             description += '<table style="border: 1px solid black;">'
@@ -266,19 +261,9 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
             description += '<table style="border: 1px solid black;">'
             description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
             description += 'padding: 4px; text-align: center; font-weight: bold;">'
-            description += 'Investigator(s)'
-            description += '</th>'
-            for investigator in assignees:
-                description += '<tr>'
-                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-                description += 'padding: 4px; text-align: left;">'
-                description += investigator
-                description += '</td></tr>'
-            description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
-            description += 'padding: 4px; text-align: center; font-weight: bold;">'
             description += 'Investigation State(s)'
             description += '</th>'
-            for investigationState in investigationStates:
+            for investigationState in remediations:
                 description += '<tr>'
                 description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
                 description += 'padding: 4px; text-align: left;">'
@@ -286,9 +271,49 @@ def transform(alerts, options, AADTOKEN, GRAPHTOKEN):
                 description += '</td></tr>'
             description += '</table>'
             entity.set_entity_description(description)
-            uuid = str(machineId) + '-DATP'
+            uuid = str(DeviceID) + '-DATP'
             entityList.append((entity, uuid))
     return(entityList)
+
+
+def queryLogonUsers(DeviceID, options, MSSCTOKEN, GRAPHTOKEN):
+    '''
+    Attempt to find the logonusers for the system
+    '''
+    apiheaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer ' + MSSCTOKEN
+    }
+    url = settings.MSSCRESOURCEAPPIDURI + '/machines?$filter=id+eq+\'' + DeviceID + '\''
+    if options.verbose:
+        print("U) Contacting " + url + " ...")
+    sslcontext = ssl.create_default_context()
+    if not settings.MSSCSSLVERIFY:
+        if options.verbose:
+            print("W) You have disabled SSL verification for MSSC, " +
+                  "this is not recommended!")
+        sslcontext.check_hostname = False
+        sslcontext.verify_mode = ssl.CERT_NONE
+    req = urllib.request.Request(url, headers=apiheaders)
+    try:
+        users = []
+        response = urllib.request.urlopen(req, context=sslcontext)
+        jsonResponse = json.loads(response.read().decode('utf-8'))['value']
+        if options.verbose:
+            print("U) Got a MSSC JSON response package:")
+            pprint.pprint(jsonResponse)
+        for logonUser in jsonResponse:
+            accountName = logonUser['accountName'].lower()
+            domainName = logonUser['accountDomain'].lower()
+            for key in settings.MSSCADMAPPING:
+                addomain = settings.MSSCADMAPPING[key]
+                if domainName == addomain:
+                    email = accountName + '@' + key
+                    users.append(queryUser(email, options, GRAPHTOKEN))
+        return(users)
+    except urllib.error.HTTPError:
+        pass
 
 
 def queryUser(email, options, GRAPHTOKEN):
@@ -316,7 +341,7 @@ def queryUser(email, options, GRAPHTOKEN):
     response = urllib.request.urlopen(request, context=sslcontext)
     jsonResponse = json.loads(response.read().decode('utf-8'))
     if 'onPremisesSamAccountName' in jsonResponse:
-        addomain = settings.DATPADMAPPING[emaildomain].lower()
+        addomain = settings.MSSCADMAPPING[emaildomain].lower()
         userName = jsonResponse['onPremisesSamAccountName'].lower()
         handle = addomain + '\\' + userName
         person['handle'].add(handle)
@@ -339,115 +364,6 @@ def queryUser(email, options, GRAPHTOKEN):
             else:
                 person['telephone'].add(numbers)
     return(person)
-    '''
-    Take the resulting DATP JSON objects and turn all alerts
-    into a list of EIQ objects.
-    '''
-
-def queryLogonUsers(machineId, options, AADTOKEN, GRAPHTOKEN):
-    '''
-    Attempt to find the logonusers for the system
-    '''
-    apiheaders = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Bearer ' + AADTOKEN
-    }
-    url = settings.DATPAPPIDURL + '/machines/' + machineId + '/logonusers'
-    if options.verbose:
-        print("U) Contacting " + url + " ...")
-    sslcontext = ssl.create_default_context()
-    if not settings.DATPSSLVERIFY:
-        if options.verbose:
-            print("W) You have disabled SSL verification for DATP, " +
-                  "this is not recommended!")
-        sslcontext.check_hostname = False
-        sslcontext.verify_mode = ssl.CERT_NONE
-    req = urllib.request.Request(url, headers=apiheaders)
-    try:
-        users = []
-        response = urllib.request.urlopen(req, context=sslcontext)
-        jsonResponse = json.loads(response.read().decode('utf-8'))['value']
-        if options.verbose:
-            print("U) Got a DATP JSON response package:")
-            pprint.pprint(jsonResponse)
-        for logonUser in jsonResponse:
-            accountName = logonUser['accountName'].lower()
-            domainName = logonUser['accountDomain'].lower()
-            for key in settings.DATPADMAPPING:
-                addomain = settings.DATPADMAPPING[key]
-                if domainName == addomain:
-                    email = accountName + '@' + key
-                    users.append(queryUser(email, options, GRAPHTOKEN))
-        return(users)
-    except:
-        raise
-
-
-def queryMachineInformation(machineId, options, AADTOKEN):
-    '''
-    Get the system information
-    '''
-    apiheaders = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Bearer ' + AADTOKEN
-    }
-    url = settings.DATPAPPIDURL + '/machines/' + machineId
-    req = urllib.request.Request(url, headers=apiheaders)
-    ips = set()
-    machineInfo = {'ips': set(),
-                   'hostnames': set(),
-                   'firstSeen': 'unknown',
-                   'lastSeen': 'unknown',
-                   'isAadJoined': False,
-                   'osInfo': 'unknown',
-                   'machineId': machineId}
-    sslcontext = ssl.create_default_context()
-    if not settings.DATPSSLVERIFY:
-        if options.verbose:
-            print("W) You have disabled SSL verification for DATP, " +
-                  "this is not recommended!")
-        sslcontext.check_hostname = False
-        sslcontext.verify_mode = ssl.CERT_NONE
-    req = urllib.request.Request(url, headers=apiheaders)
-    try:
-        response = urllib.request.urlopen(req, context=sslcontext)
-        jsonResponse = json.loads(response.read().decode('utf-8'))
-        if options.verbose:
-            print("U) Got a DATP JSON response package:")
-            pprint.pprint(jsonResponse)
-        if 'computerDnsName' in jsonResponse:
-            machineInfo['hostnames'].add(jsonResponse['computerDnsName'])
-        if 'lastIpAddress' in jsonResponse:
-            machineInfo['ips'].add(jsonResponse['lastIpAddress'])
-        if 'lastExternalIpAddress' in jsonResponse:
-            machineInfo['ips'].add(jsonResponse['lastExternalIpAddress'])
-        if 'isAadJoined' in jsonResponse:
-            if jsonResponse['isAadJoined']:
-                machineInfo['isAadJoined'] = True
-        if 'firstSeen' in jsonResponse:
-            machineInfo['firstSeen'] = jsonResponse['firstSeen']
-        if 'lastSeen' in jsonResponse:
-            machineInfo['lastSeen'] = jsonResponse['lastSeen']
-        if 'osPlatform' in jsonResponse:
-            if jsonResponse['osPlatform']:
-                machineInfo['osInfo'] = 'OS: ' + str(jsonResponse['osPlatform'])
-        if 'osBuild' in jsonResponse:
-            if jsonResponse['osBuild']:
-                machineInfo['osInfo'] += ', build: '+str(jsonResponse['osBuild'])
-        if 'version' in jsonResponse:
-            if jsonResponse['osVersion']:
-                machineInfo['osInfo'] += ', version: '+str(jsonResponse['version'])
-    except urllib.error.HTTPError as e:
-        reason = e.reason
-        if reason == "Not Found":
-            '''
-            Handle machines that are not found
-            '''
-            if options.verbose:
-                print("U) Could not IP information for " + machineId + '!')
-    return(machineInfo)
 
 
 def eiqIngest(eiqJSON, uuid, options):
@@ -558,7 +474,7 @@ def download(options):
         if options.verbose:
             print("U) Got a DATP JSON response package:")
             pprint.pprint(jsonResponse)
-        return (jsonResponse['value'], AADTOKEN)
+        return (jsonResponse, AADTOKEN)
     except IOError:
         if options.verbose:
             print("E) An error occured downloading DATP alerts!")
@@ -598,11 +514,12 @@ def main():
                         help='[optional] Do not update the existing EclecticIQ '
                              'entity, but create a new one (default: disabled)')
     args = parser.parse_args()
-    alerts, AADTOKEN = download(args)
+    alerts, DATPTOKEN = download(args)
     if alerts:
+        MSSCTOKEN = graph.generateMSSCToken(args, settings)
         GRAPHTOKEN = graph.generateGraphToken(args, settings)
-        if GRAPHTOKEN:
-            entities = transform(alerts, args, AADTOKEN, GRAPHTOKEN)
+        if MSSCTOKEN and GRAPHTOKEN:
+            entities = transform(alerts, args, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN)
             if entities:
                 for entity, uuid in entities:
                     if args.verbose:
