@@ -117,7 +117,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             entity with all relevant information
             '''
             entity = eiqjson.EIQEntity()
-            if 'high' in severities:
+            if ('low' or 'medium' or 'high') in severities:
                 entity.set_entity(entity.ENTITY_INCIDENT)
                 eventType = 'Incident'
             else:
@@ -265,10 +265,11 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             if len(handles) == 0:
                 handles.add('unknown')
             title = hostname + ': '
-            if not threatName:
+            if len(threatNames) == 0:
                 threatName = 'Potential malware'
-            title += threatName
-            title += ' detected - ' + settings.TITLETAG
+            else:
+                threatName = ', '.join(threatNames)
+            title += threatName + ' detected - ' + settings.TITLETAG
             entity.set_entity_title(title)
             description = '<h1>Description of ' + eventType + '</h1>'
             description += '<table style="border: 1px solid black;">'
