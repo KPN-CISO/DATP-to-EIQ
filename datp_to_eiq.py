@@ -103,7 +103,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                         if alert['Sha256']:
                             sha256s.add(alert['Sha256'])
                         if alert['RemediationAction']:
-                            remediations.add(alert['RemediationAction'])
+                            remediations.add(alert['RemediationAction']+'d')
                         if alert['Severity']:
                             severities.add(alert['Severity'].lower())
                         if alert['Source']:
@@ -269,7 +269,12 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                 threatName = 'Potential malware'
             else:
                 threatName = ', '.join(threatNames)
-            title += threatName + ' detected - ' + settings.TITLETAG
+            title += threatName + ' - '
+            if len(remediations) == 0:
+                status = 'detected'
+            else:
+                status = ', '.join(remediations)
+            title += 'Status: ' + status + ' - ' + settings.TITLETAG
             entity.set_entity_title(title)
             description = '<h1>Description of ' + eventType + '</h1>'
             description += '<table style="border: 1px solid black;">'
