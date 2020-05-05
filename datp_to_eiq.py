@@ -108,7 +108,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                         if alert['ThreatName']:
                             threatNames.add(alert['ThreatName'])
                         if alert['LogOnUsers']:
-                            handles.add(alert['LogOnUsers'])
+                            handles.add(alert['LogOnUsers'].lower())
             '''
             All machine information collected, now build the EclecticIQ
             entity with all relevant information
