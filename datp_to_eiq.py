@@ -48,6 +48,11 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             sha256s = set()
             threatNames = set()
             urls = set()
+            remediations = set()
+            categories = set()
+            severities = set()
+            detectionSources = set()
+            handles = set()
             for alertId in machineNames[machineName]:
                 for alert in alerts:
                     if alertId == alert['AlertId']:
@@ -58,7 +63,8 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                             if alertTime < entityTime:
                                 entityTime = alertTime
                         alertTitle = alert['AlertTitle'].lower()
-                        category = alert['Category']
+                        if alert['Category']:
+                            categories.add(alert['Category'])
                         if alert['ComputerDnsName']:
                             hostnames.add(alert['ComputerDnsName'])
                         '''
@@ -96,166 +102,166 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                             sha1s.add(alert['Sha1'])
                         if alert['Sha256']:
                             sha256s.add(alert['Sha256'])
-                        remediations = set()
                         if alert['RemediationAction']:
                             remediations.add(alert['RemediationAction'])
-                        severity = alert['Severity'].lower()
-                        detectionSource = alert['Source']
-                        threatName = alert['ThreatName']
-                        handles = set()
-                        if alert['UserName']:
-                            userName = alert['UserName'].lower()
-                        if alert['UserDomain']:
-                            userDomain = alert['UserDomain'].lower()
-                            if userName and userDomain:
-                                handle = userDomain + '\\' + userName
-                                handles.add(handle)
-                        entity = eiqjson.EIQEntity()
-                        if 'informational' in severity:
-                            eventType = 'Sighting'
-                            entity.set_entity(entity.ENTITY_SIGHTING)
-                        else:
-                            eventType = 'Incident'
-                            entity.set_entity(entity.ENTITY_INCIDENT)
-                        entity.set_entity_tlp('amber')
-                        entity.set_entity_source(settings.EIQSOURCE)
-                        entity.set_entity_observed_time(entityTime + 'Z')
-                        entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
-                        for hostname in hostnames:
-                            hostnames.add(hostname)
-                            eiqtype = entity.OBSERVABLE_HOST
-                            classification = entity.CLASSIFICATION_UNKNOWN
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                            entity.add_observable(eiqtype,
-                                                  hostname,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                        for ip in ipv4s:
-                            eiqtype = entity.OBSERVABLE_IPV4
-                            classification = entity.CLASSIFICATION_UNKNOWN
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                            entity.add_observable(eiqtype,
-                                                  ip,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                        for ip in ipv6s:
-                            eiqtype = entity.OBSERVABLE_IPV6
-                            classification = entity.CLASSIFICATION_UNKNOWN
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                            entity.add_observable(eiqtype,
-                                                  ip,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                        for url in urls:
-                            eiqtype = entity.OBSERVABLE_URI
-                            classification = entity.CLASSIFICATION_UNKNOWN
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                            entity.add_observable(eiqtype,
-                                                  url,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                        for md5 in md5s:
-                            eiqtype = entity.OBSERVABLE_MD5
-                            classification = entity.CLASSIFICATION_BAD
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                            entity.add_observable(eiqtype,
-                                                  md5,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                        for sha1 in sha1s:
-                            eiqtype = entity.OBSERVABLE_SHA1
-                            classification = entity.CLASSIFICATION_BAD
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                            entity.add_observable(eiqtype,
-                                                  sha1,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                        for sha256 in sha256s:
-                            eiqtype = entity.OBSERVABLE_SHA256
-                            classification = entity.CLASSIFICATION_BAD
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                            entity.add_observable(eiqtype,
-                                                  sha256,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                        for actor in actors:
-                            eiqtype = entity.OBSERVABLE_ACTOR
-                            classification = entity.CLASSIFICATION_BAD
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_OBSERVED
-                            entity.add_observable(eiqtype,
-                                                  actor,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                        for threatName in threatNames:
-                            eiqtype = entity.OBSERVABLE_MALWARE
-                            classification = entity.CLASSIFICATION_BAD
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_OBSERVED
-                            entity.add_observable(eiqtype,
-                                                  threatName,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                        for handle in handles:
-                            eiqtype = entity.OBSERVABLE_HANDLE
-                            classification = entity.CLASSIFICATION_UNKNOWN
-                            confidence = entity.CONFIDENCE_HIGH
-                            link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                            entity.add_observable(eiqtype,
-                                                  handle,
-                                                  classification=classification,
-                                                  confidence=confidence,
-                                                  link_type=link_type)
-                        '''
-                        for handle in logonUsers:
-                            for handle in logonUser['handle']:
-                                handles.add(handle)
-                                eiqtype = entity.OBSERVABLE_HANDLE
-                                classification = entity.CLASSIFICATION_UNKNOWN
-                                confidence = entity.CONFIDENCE_HIGH
-                                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                                entity.add_observable(eiqtype,
-                                                      handle,
-                                                      classification=classification,
-                                                      confidence=confidence,
-                                                      link_type=link_type)
-                            for email in logonUser['mail']:
-                                eiqtype = entity.OBSERVABLE_EMAIL
-                                classification = entity.CLASSIFICATION_UNKNOWN
-                                confidence = entity.CONFIDENCE_HIGH
-                                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                                entity.add_observable(eiqtype,
-                                                      email,
-                                                      classification=classification,
-                                                      confidence=confidence,
-                                                      link_type=link_type)
-                            for number in logonUser['telephone']:
-                                eiqtype = entity.OBSERVABLE_TELEPHONE
-                                classification = entity.CLASSIFICATION_UNKNOWN
-                                confidence = entity.CONFIDENCE_HIGH
-                                link_type = entity.OBSERVABLE_LINK_OBSERVED
-                                entity.add_observable(eiqtype,
-                                                      number.replace(' ', ''),
-                                                      classification=classification,
-                                                      confidence=confidence,
-                                                      link_type=link_type)
-                            '''
+                        if alert['Severity']:
+                            severities.add(alert['Severity'].lower())
+                        if alert['Source']:
+                            detectionSources.add(alert['Source'])
+                        if alert['ThreatName']:
+                            threatNames.add(alert['ThreatName'])
+                        if alert['LogOnUsers']:
+                            handles.add(alert['LogOnUsers'])
+            '''
+            All machine information collected, now build the EclecticIQ
+            entity with all relevant information
+            '''
+            entity = eiqjson.EIQEntity()
+            if 'high' in severities:
+                entity.set_entity(entity.ENTITY_INCIDENT)
+                eventType = 'Incident'
+            else:
+                entity.set_entity(entity.ENTITY_SIGHTING)
+                eventType = 'Sighting'
+            entity.set_entity_source(settings.EIQSOURCE)
+            entity.set_entity_observed_time(entityTime + 'Z')
+            entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
+            entity.set_entity_tlp('amber')
+            for hostname in hostnames:
+                hostnames.add(hostname)
+                eiqtype = entity.OBSERVABLE_HOST
+                classification = entity.CLASSIFICATION_UNKNOWN
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      hostname,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for ip in ipv4s:
+                eiqtype = entity.OBSERVABLE_IPV4
+                classification = entity.CLASSIFICATION_UNKNOWN
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      ip,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for ip in ipv6s:
+                eiqtype = entity.OBSERVABLE_IPV6
+                classification = entity.CLASSIFICATION_UNKNOWN
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      ip,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for url in urls:
+                eiqtype = entity.OBSERVABLE_URI
+                classification = entity.CLASSIFICATION_UNKNOWN
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      url,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for md5 in md5s:
+                eiqtype = entity.OBSERVABLE_MD5
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      md5,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for sha1 in sha1s:
+                eiqtype = entity.OBSERVABLE_SHA1
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      sha1,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for sha256 in sha256s:
+                eiqtype = entity.OBSERVABLE_SHA256
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      sha256,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for actor in actors:
+                eiqtype = entity.OBSERVABLE_ACTOR
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_OBSERVED
+                entity.add_observable(eiqtype,
+                                      actor,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for threatName in threatNames:
+                eiqtype = entity.OBSERVABLE_MALWARE
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_OBSERVED
+                entity.add_observable(eiqtype,
+                                      threatName,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            for handle in handles:
+                eiqtype = entity.OBSERVABLE_HANDLE
+                classification = entity.CLASSIFICATION_UNKNOWN
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      handle,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
+            '''
+            for handle in logonUsers:
+                for handle in logonUser['handle']:
+                    handles.add(handle)
+                    eiqtype = entity.OBSERVABLE_HANDLE
+                    classification = entity.CLASSIFICATION_UNKNOWN
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                    entity.add_observable(eiqtype,
+                                          handle,
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
+                for email in logonUser['mail']:
+                    eiqtype = entity.OBSERVABLE_EMAIL
+                    classification = entity.CLASSIFICATION_UNKNOWN
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                    entity.add_observable(eiqtype,
+                                          email,
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
+                for number in logonUser['telephone']:
+                    eiqtype = entity.OBSERVABLE_TELEPHONE
+                    classification = entity.CLASSIFICATION_UNKNOWN
+                    confidence = entity.CONFIDENCE_HIGH
+                    link_type = entity.OBSERVABLE_LINK_OBSERVED
+                    entity.add_observable(eiqtype,
+                                          number.replace(' ', ''),
+                                          classification=classification,
+                                          confidence=confidence,
+                                          link_type=link_type)
+            '''
             if len(handles) == 0:
                 handles.add('unknown')
             title = hostname + ': '
@@ -270,11 +276,12 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             description += 'padding: 4px; text-align: center; font-weight: bold;">'
             description += 'Threat(s)'
             description += '</th>'
-            description += '<tr>'
-            description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-            description += 'padding: 4px; text-align: left;">'
-            description += threatName
-            description += '</td></tr>'
+            for threatName in threatNames:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left;">'
+                description += threatName
+                description += '</td></tr>'
             description += '</table>'
             description += '<br />'
             description += '<table style="border: 1px solid black;">'
@@ -282,11 +289,12 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             description += 'padding: 4px; text-align: center; font-weight: bold;">'
             description += 'Detection Source(s)'
             description += '</th>'
-            description += '<tr>'
-            description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
-            description += 'padding: 4px; text-align: left;">'
-            description += detectionSource
-            description += '</td></tr>'
+            for detectionSource in detectionSources:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left;">'
+                description += detectionSource
+                description += '</td></tr>'
             description += '</table>'
             description += '<br />'
             description += '<table style="border: 1px solid black;">'
