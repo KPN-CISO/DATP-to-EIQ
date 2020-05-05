@@ -67,14 +67,11 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                             categories.add(alert['Category'])
                         if alert['ComputerDnsName']:
                             hostnames.add(alert['ComputerDnsName'])
-                        '''
                         deviceid = alert['DeviceID']
                         logonUsers = queryLogonUsers(deviceid,
                                                      options,
                                                      MSSCTOKEN,
                                                      GRAPHTOKEN)
-                        '''
-
                         if alert['InternalIPv4List']:
                             for ipv4 in alert['InternalIPv4List'].split(';'):
                                 ipv4s.add(ipv4)
@@ -228,40 +225,39 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                                       classification=classification,
                                       confidence=confidence,
                                       link_type=link_type)
-            '''
-            for handle in logonUsers:
-                for handle in logonUser['handle']:
-                    handles.add(handle)
-                    eiqtype = entity.OBSERVABLE_HANDLE
-                    classification = entity.CLASSIFICATION_UNKNOWN
-                    confidence = entity.CONFIDENCE_HIGH
-                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                    entity.add_observable(eiqtype,
-                                          handle,
-                                          classification=classification,
-                                          confidence=confidence,
-                                          link_type=link_type)
-                for email in logonUser['mail']:
-                    eiqtype = entity.OBSERVABLE_EMAIL
-                    classification = entity.CLASSIFICATION_UNKNOWN
-                    confidence = entity.CONFIDENCE_HIGH
-                    link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
-                    entity.add_observable(eiqtype,
-                                          email,
-                                          classification=classification,
-                                          confidence=confidence,
-                                          link_type=link_type)
-                for number in logonUser['telephone']:
-                    eiqtype = entity.OBSERVABLE_TELEPHONE
-                    classification = entity.CLASSIFICATION_UNKNOWN
-                    confidence = entity.CONFIDENCE_HIGH
-                    link_type = entity.OBSERVABLE_LINK_OBSERVED
-                    entity.add_observable(eiqtype,
-                                          number.replace(' ', ''),
-                                          classification=classification,
-                                          confidence=confidence,
-                                          link_type=link_type)
-            '''
+            if logonUsers:
+                for handle in logonUsers:
+                    for handle in logonUser['handle']:
+                        handles.add(handle)
+                        eiqtype = entity.OBSERVABLE_HANDLE
+                        classification = entity.CLASSIFICATION_UNKNOWN
+                        confidence = entity.CONFIDENCE_HIGH
+                        link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                        entity.add_observable(eiqtype,
+                                              handle,
+                                              classification=classification,
+                                              confidence=confidence,
+                                              link_type=link_type)
+                    for email in logonUser['mail']:
+                        eiqtype = entity.OBSERVABLE_EMAIL
+                        classification = entity.CLASSIFICATION_UNKNOWN
+                        confidence = entity.CONFIDENCE_HIGH
+                        link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                        entity.add_observable(eiqtype,
+                                              email,
+                                              classification=classification,
+                                              confidence=confidence,
+                                              link_type=link_type)
+                    for number in logonUser['telephone']:
+                        eiqtype = entity.OBSERVABLE_TELEPHONE
+                        classification = entity.CLASSIFICATION_UNKNOWN
+                        confidence = entity.CONFIDENCE_HIGH
+                        link_type = entity.OBSERVABLE_LINK_OBSERVED
+                        entity.add_observable(eiqtype,
+                                              number.replace(' ', ''),
+                                              classification=classification,
+                                              confidence=confidence,
+                                              link_type=link_type)
             if len(handles) == 0:
                 handles.add('unknown')
             title = hostname + ': '
