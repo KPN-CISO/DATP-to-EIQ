@@ -2,7 +2,7 @@
 
 DATP-to-EIQ is a simple Python script that will:
 
-1. connect to your Microsoft Security Center instance;
+1. connect to your Windows Defender ATP and Microsoft Security Center instances;
 2. download all events that occurred within the given time window;
 3. import them into your EclecticIQ instance as Sighting or Incident entities.
 
@@ -12,7 +12,7 @@ For configuration options, refer to the `settings.py.sample` file in the `config
 
 - Python 3
 - EIQlib module (https://github.com/KPN-CISO/eiqlib)
-- Microsoft Azure AD and Defender ATP access, with a valid API token (AAD)
+- Microsoft Azure AD, Defender ATP API access (with SIEM connector permissions)
 - Graph API credentials to generate Graph API tokens
 - An EclecticIQ account (user+pass) and EIQ 'Source' token
 

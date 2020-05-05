@@ -13,15 +13,15 @@ TENANTID = '<tenant-id>'
 # The following variables are needed to generate a DATP token validity (default:
 # 3600 seconds) and define the time window
 #
-# DATPAPPID		[Required] replace with your app ID
-# DATPAPPSECRET		[Required] replace with your app secret
-# DATPTOKENURL		[Required] OAuth2 provider for generating token. This is normally
+# DATPAPPID             [Required] replace with your app ID
+# DATPAPPSECRET         [Required] replace with your app secret
+# DATPTOKENURL          [Required] OAuth2 provider for generating token. This is normally
 #                                  'https://login.windows.net/%s/oauth2/token'
-# DATPRESOURCEIDURL	[Required] Should be 'https://api-eu.securitycenter.windows.com/api'
-# DATPAPPIDURL		[Required] AppID URL - usually the URL for a Security Center alerts
-#				   API, e.g.: 'https://api-eu.securitycenter.windows.com/api'
-# DATPTIME		[Required] Time window of alerts to ingest into EIQ (default: 3600)
-# DATPSSLVERIFY		[Required] Verify the SSL connection (default: yes)
+# DATPRESOURCEIDURL     [Required] Should be 'https://api-eu.securitycenter.windows.com/api'
+# DATPAPPIDURL          [Required] AppID URL - usually the URL for a Security Center alerts
+#                                  API, e.g.: 'https://api-eu.securitycenter.windows.com/api'
+# DATPTIME              [Required] Time window of alerts to ingest into EIQ (default: 3600)
+# DATPSSLVERIFY         [Required] Verify the SSL connection (default: yes)
 # DATPADMAPPING         [Optional] Dictionary that maps <email.domain> to the (Azure) AD
 #                                  forest(s) users. Example: { 'company.com': 'domain' }
 #                                  will map 'username@company.com' to the EIQ handle
@@ -32,10 +32,30 @@ DATPAPPID = '<app-id>'
 DATPAPPSECRET = '<app-secret>'
 DATPADMAPPING = { 'company.com': 'domain' }
 DATPTOKENURL = 'https://login.windows.net/%s/oauth2/token' % (DATPTENANTID)
-DATPRESOURCEIDURL = 'https://api.securitycenter.windows.com'
-DATPAPPIDURL = 'https://api-eu.securitycenter.windows.com/api'
+DATPRESOURCEIDURL = 'https://graph.windows.net'
+DATPAPPIDURL = 'https://wdatp-alertexporter-eu.windows.com/api'
 DATPTIME = 3600
 DATPSSLVERIFY = True
+
+# Settings for Microsoft Security Center API
+#
+# MSSCAPPID             [Required] replace with your app ID
+# MSSCAPPSECRET         [Required] replace with your app secret
+# MSSCAPPIDURL          [Required] AppID URL - usually the URL for a Security Center alerts
+#                                  API, e.g.: 'https://wdatp-alertexporter-eu.windows.com/api'
+# MSSCADMAPPING         [Optional] Dictionary that maps <email.domain> to the (Azure) AD
+#                                  forest(s) users. Example: { 'company.com': 'domain' }
+#                                  will map 'username@company.com' to the EIQ handle
+#                                  'domain\\username'. You can have multiple dictionary
+#                                  entries for multiple domains/forests.
+# MSSCSSLVERIFY         [Required] Verify the SSL connection (default: yes)
+
+MSSCURL = 'https://api-eu.securitycenter.windows.com/api'
+MSSCRESOURCEAPPIDURI = 'https://api.securitycenter.windows.com'
+MSSCCLIENTID = '<client-id>'
+MSSCCLIENTSECRET = '<client-secret>'
+MSSCTOKENURI = 'https://login.microsoftonline.com/%s/oauth2/token' % (TENANTID)
+MSSCSSLVERIFY = True
 
 # Settings for Microsoft Graph API
 
