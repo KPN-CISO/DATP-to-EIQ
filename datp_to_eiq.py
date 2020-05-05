@@ -271,7 +271,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                 description += '</td></tr>'
             description += '</table>'
             entity.set_entity_description(description)
-            uuid = str(DeviceID) + '-DATP'
+            uuid = str(deviceid) + '-DATP'
             entityList.append((entity, uuid))
     return(entityList)
 
