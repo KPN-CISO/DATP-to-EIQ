@@ -29,6 +29,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
     if options.verbose:
         print("U) Processing DATP Events ...")
     if len(alerts) > 0:
+        entityList = []
         for alert in alerts:
             actor = alert['Actor']
             alertTime = alert['AlertTime'].split('.')[0]
