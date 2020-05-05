@@ -345,14 +345,15 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
 
 def queryLogonUsers(DeviceID, options, MSSCTOKEN, GRAPHTOKEN):
     '''
-    Attempt to find the logonusers for the system
+    Attempt to find the system
     '''
     apiheaders = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization': 'Bearer ' + MSSCTOKEN
     }
-    url = settings.MSSCRESOURCEAPPIDURI + '/machines?$filter=id+eq+\'' + DeviceID + '\''
+    url = settings.MSSCURL
+    url += '/machines?$filter=id+eq+\'' + DeviceID + '\''
     if options.verbose:
         print("U) Contacting " + url + " ...")
     sslcontext = ssl.create_default_context()
@@ -364,23 +365,54 @@ def queryLogonUsers(DeviceID, options, MSSCTOKEN, GRAPHTOKEN):
         sslcontext.verify_mode = ssl.CERT_NONE
     req = urllib.request.Request(url, headers=apiheaders)
     try:
-        users = []
+        machineId = None
         response = urllib.request.urlopen(req, context=sslcontext)
         jsonResponse = json.loads(response.read().decode('utf-8'))['value']
         if options.verbose:
             print("U) Got a MSSC JSON response package:")
             pprint.pprint(jsonResponse)
-        for logonUser in jsonResponse:
-            accountName = logonUser['accountName'].lower()
-            domainName = logonUser['accountDomain'].lower()
-            for key in settings.MSSCADMAPPING:
-                addomain = settings.MSSCADMAPPING[key]
-                if domainName == addomain:
-                    email = accountName + '@' + key
-                    users.append(queryUser(email, options, GRAPHTOKEN))
-        return(users)
+        machineId = jsonResponse[0]['aadDeviceId']
     except urllib.error.HTTPError:
         pass
+    if machineId:
+        '''
+        Attempt to find the users for the system
+        '''
+        apiheaders = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + MSSCTOKEN
+        }
+        url = settings.MSSCURL
+        url += '/machines/' + machineId + '/logonusers'
+        if options.verbose:
+            print("U) Contacting " + url + " ...")
+        sslcontext = ssl.create_default_context()
+        if not settings.MSSCSSLVERIFY:
+            if options.verbose:
+                print("W) You have disabled SSL verification for MSSC, " +
+                      "this is not recommended!")
+            sslcontext.check_hostname = False
+            sslcontext.verify_mode = ssl.CERT_NONE
+        req = urllib.request.Request(url, headers=apiheaders)
+        try:
+            users = []
+            response = urllib.request.urlopen(req, context=sslcontext)
+            jsonResponse = json.loads(response.read().decode('utf-8'))['value']
+            if options.verbose:
+                print("U) Got a MSSC JSON response package:")
+                pprint.pprint(jsonResponse)
+            for logonUser in jsonResponse:
+                accountName = logonUser['accountName'].lower()
+                domainName = logonUser['accountDomain'].lower()
+                for key in settings.MSSCADMAPPING:
+                    addomain = settings.MSSCADMAPPING[key]
+                    if domainName == addomain:
+                        email = accountName + '@' + key
+                        users.append(queryUser(email, options, GRAPHTOKEN))
+            return(users)
+        except urllib.error.HTTPError:
+            pass
 
 
 def queryUser(email, options, GRAPHTOKEN):
