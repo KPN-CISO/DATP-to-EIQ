@@ -53,6 +53,8 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             severities = set()
             detectionSources = set()
             handles = set()
+            files = set()
+            logonUsers = set()
             for alertId in machineNames[machineName]:
                 for alert in alerts:
                     if alertId == alert['AlertId']:
@@ -67,11 +69,16 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                             categories.add(alert['Category'])
                         if alert['ComputerDnsName']:
                             hostnames.add(alert['ComputerDnsName'])
+                        '''
+                        Currently no easy way to go from SAMname to email,
+                        because Microsoft doesn't index OnPremisesSamAccountName
+
                         deviceid = alert['DeviceID']
                         logonUsers = queryLogonUsers(deviceid,
                                                      options,
                                                      MSSCTOKEN,
                                                      GRAPHTOKEN)
+                        '''
                         if alert['InternalIPv4List']:
                             for ipv4 in alert['InternalIPv4List'].split(';'):
                                 ipv4s.add(ipv4)
@@ -109,6 +116,8 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                             threatNames.add(alert['ThreatName'])
                         if alert['LogOnUsers']:
                             handles.add(alert['LogOnUsers'].lower())
+                        if alert['FileName'] and alert['FilePath']:
+                            files.add(alert['FilePath']+'\\'+alert['FileName'])
             '''
             All machine information collected, now build the EclecticIQ
             entity with all relevant information
@@ -225,6 +234,16 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                                       classification=classification,
                                       confidence=confidence,
                                       link_type=link_type)
+            for file in files:
+                eiqtype = entity.OBSERVABLE_FILE
+                classification = entity.CLASSIFICATION_BAD
+                confidence = entity.CONFIDENCE_HIGH
+                link_type = entity.OBSERVABLE_LINK_TEST_MECHANISM
+                entity.add_observable(eiqtype,
+                                      file,
+                                      classification=classification,
+                                      confidence=confidence,
+                                      link_type=link_type)
             if logonUsers:
                 for handle in logonUsers:
                     for handle in logonUser['handle']:
@@ -283,6 +302,16 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                 description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
                 description += 'padding: 4px; text-align: left;">'
                 description += threatName
+                description += '</td></tr>'
+            description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+            description += 'padding: 4px; text-align: center; font-weight: bold;">'
+            description += 'File(s)'
+            description += '</th>'
+            for file in files:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left;">'
+                description += file
                 description += '</td></tr>'
             description += '</table>'
             description += '<br />'
