@@ -310,8 +310,11 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             title = hostname + ': '
             if len(threatNames) == 0:
                 threatName = 'Behaviour'
+                threatNames.add('Behavioural detection')
             else:
                 threatName = ', '.join(threatNames)
+            if len(remediations) == 0:
+                remediations.add('No remediation actions taken')
             title += threatName + ' - '
             allTitles = ', '.join(titles)
             if 'suspicious connection' in allTitles:
