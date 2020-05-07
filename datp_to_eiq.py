@@ -80,23 +80,46 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                                                      GRAPHTOKEN)
                         '''
                         if alert['InternalIPv4List']:
-                            for ipv4 in alert['InternalIPv4List'].split(';'):
-                                ipv4s.add(ipv4)
+                            ips = alert['InternalIPv4List'].split(';')
+                            if isinstance(ips, list):
+                                for ipv4 in ips:
+                                    ipv4s.add(ipv4)
+                            else:
+                                ipv4s.add(ips)
                         if alert['InternalIPv6List']:
-                            for ipv6 in alert['InternalIPv6List'].split(';'):
-                                ipv6s.add(ipv6)
-                        for ip in alert['IpAddress']:
-                            if ip != None:
-                                try:
-                                    socket.inet_aton(ip)
-                                    ipv4s.add(ip)
-                                except socket.error:
-                                    pass
-                                try:
-                                    socket.inet_pton(socket.AF_INET6, ip)
-                                    ipv6s.add(ip)
-                                except socket.error:
-                                    pass
+                            ips = alert['InternalIPv6List'].split(';')
+                            if isinstance(ips, list):
+                                for ipv6 in ips:
+                                    ipv6s.add(ipv6)
+                            else:
+                                ipv6s.add(ips)
+                        if alert['IpAddress']:
+                            ips = alert['IpAddress'].split(';')
+                            if isinstance(ips, list):
+                                for ip in ips:
+                                    if ip != None:
+                                        try:
+                                            socket.inet_aton(ip)
+                                            ipv4s.add(ip)
+                                        except socket.error:
+                                            pass
+                                        try:
+                                            socket.inet_pton(socket.AF_INET6, ip)
+                                            ipv6s.add(ip)
+                                        except socket.error:
+                                            pass
+                            else:
+                                if ips != None:
+                                    try:
+                                        socket.inet_aton(ips)
+                                        ipv4s.add(ips)
+                                    except socket.error:
+                                        pass
+                                    try:
+                                        socket.inet_pton(socket.AF_INET6, ips)
+                                        ipv6s.add(ips)
+                                    except socket.error:
+                                        pass
                         if alert['Url']:
                             for url in alert['Url'].split(';'):
                                 urls.add(url)
