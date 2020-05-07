@@ -55,6 +55,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             handles = set()
             files = set()
             logonUsers = set()
+            titles = set()
             for alertId in machineNames[machineName]:
                 for alert in alerts:
                     if alertId == alert['AlertId']:
@@ -64,11 +65,12 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                             alertTime = alert['alertTime'].split('.')[0]
                             if alertTime < entityTime:
                                 entityTime = alertTime
-                        alertTitle = alert['AlertTitle'].lower()
+                        if alert['AlertTitle']:
+                            titles.add(alert['AlertTitle'].lower())
                         if alert['Category']:
-                            categories.add(alert['Category'])
+                            categories.add(alert['Category'].lower())
                         if alert['ComputerDnsName']:
-                            hostnames.add(alert['ComputerDnsName'])
+                            hostnames.add(alert['ComputerDnsName'].lower())
                         '''
                         Currently no easy way to go from SAMname to email,
                         because Microsoft doesn't index OnPremisesSamAccountName
@@ -304,10 +306,15 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                 handles.add('unknown')
             title = hostname + ': '
             if len(threatNames) == 0:
-                threatName = 'Potential malware'
+                threatName = 'Behaviour'
             else:
                 threatName = ', '.join(threatNames)
             title += threatName + ' - '
+            allTitles = ', '.join(titles)
+            if 'suspicious connection' in allTitles:
+                title += 'suspicious connections - '
+            if 'port scan' in allTitles:
+                title += 'port scanning - '
             if len(remediations) == 0:
                 status = 'detected'
             else:
