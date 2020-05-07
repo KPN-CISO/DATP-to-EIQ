@@ -56,6 +56,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             files = set()
             logonUsers = set()
             titles = set()
+            alertDescriptions = set()
             for alertId in machineNames[machineName]:
                 for alert in alerts:
                     if alertId == alert['AlertId']:
@@ -81,6 +82,8 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                                                      MSSCTOKEN,
                                                      GRAPHTOKEN)
                         '''
+                        if alert['Description']:
+                            alertDescriptions.add(alert['Description'])
                         if alert['InternalIPv4List']:
                             ips = alert['InternalIPv4List'].split(';')
                             if isinstance(ips, list):
@@ -394,6 +397,19 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                 description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
                 description += 'padding: 4px; text-align: left;">'
                 description += investigationState
+                description += '</td></tr>'
+            description += '</table>'
+            description += '<br />'
+            description += '<table style="border: 1px solid black;">'
+            description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+            description += 'padding: 4px; text-align: center; font-weight: bold;">'
+            description += 'Full Description(s)'
+            description += '</th>'
+            for alertDescription in alertDescriptions:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left;">'
+                description += alertDescription
                 description += '</td></tr>'
             description += '</table>'
             entity.set_entity_description(description)
