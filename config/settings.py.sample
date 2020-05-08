@@ -39,21 +39,23 @@ DATPSSLVERIFY = True
 
 # Settings for Microsoft Security Center API
 #
-# MSSCAPPID             [Required] replace with your app ID
-# MSSCAPPSECRET         [Required] replace with your app secret
-# MSSCAPPIDURL          [Required] AppID URL - usually the URL for a Security Center alerts
-#                                  API, e.g.: 'https://wdatp-alertexporter-eu.windows.com/api'
+# MSSCURL               [Required] MSSC URL: 'https://api.securitycenter.windows.com/api'
+# MSSCRESOURCEAPPIDURI  [Required] MSSC Resource URI: 'https://api.securitycenter.windows.com'
+# MSSCLIENTID           [Required] Replace with your Client ID
+# MSSCAPPSECRET         [Required] Replace with your Client Secret
 # MSSCADMAPPING         [Optional] Dictionary that maps <email.domain> to the (Azure) AD
 #                                  forest(s) users. Example: { 'company.com': 'domain' }
 #                                  will map 'username@company.com' to the EIQ handle
 #                                  'domain\\username'. You can have multiple dictionary
 #                                  entries for multiple domains/forests.
+# MSSCTOKENURI          [Required] -> 'https://login.microsoftonline.com/%s/oauth2/token'
 # MSSCSSLVERIFY         [Required] Verify the SSL connection (default: yes)
 
 MSSCURL = 'https://api-eu.securitycenter.windows.com/api'
 MSSCRESOURCEAPPIDURI = 'https://api.securitycenter.windows.com'
 MSSCCLIENTID = '<client-id>'
 MSSCCLIENTSECRET = '<client-secret>'
+MSSCADMAPPING = {'company.com': 'yourADdomain'}
 MSSCTOKENURI = 'https://login.microsoftonline.com/%s/oauth2/token' % (TENANTID)
 MSSCSSLVERIFY = True
 
