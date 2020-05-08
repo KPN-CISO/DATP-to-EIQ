@@ -57,6 +57,14 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             logonUsers = set()
             titles = set()
             alertDescriptions = set()
+            '''
+            Currently no easy way to go from SAMname to email,
+            because Microsoft doesn't index OnPremisesSamAccountName
+            '''
+            logonUsers = queryLogonUsers(machineName,
+                                         options,
+                                         MSSCTOKEN,
+                                         GRAPHTOKEN)
             for alertId in machineNames[machineName]:
                 for alert in alerts:
                     if alertId == alert['AlertId']:
@@ -72,16 +80,6 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                             categories.add(alert['Category'].lower())
                         if alert['ComputerDnsName']:
                             hostnames.add(alert['ComputerDnsName'].lower())
-                        '''
-                        Currently no easy way to go from SAMname to email,
-                        because Microsoft doesn't index OnPremisesSamAccountName
-
-                        deviceid = alert['DeviceID']
-                        logonUsers = queryLogonUsers(deviceid,
-                                                     options,
-                                                     MSSCTOKEN,
-                                                     GRAPHTOKEN)
-                        '''
                         if alert['Description']:
                             alertDescriptions.add(alert['Description'])
                         if alert['InternalIPv4List']:
@@ -281,7 +279,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                                       confidence=confidence,
                                       link_type=link_type)
             if logonUsers:
-                for handle in logonUsers:
+                for logonUser in logonUsers:
                     for handle in logonUser['handle']:
                         handles.add(handle)
                         eiqtype = entity.OBSERVABLE_HANDLE
@@ -431,7 +429,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
     return(entityList)
 
 
-def queryLogonUsers(DeviceID, options, MSSCTOKEN, GRAPHTOKEN):
+def queryLogonUsers(machineId, options, MSSCTOKEN, GRAPHTOKEN):
     '''
     Attempt to find the system
     '''
@@ -441,7 +439,7 @@ def queryLogonUsers(DeviceID, options, MSSCTOKEN, GRAPHTOKEN):
         'Authorization': 'Bearer ' + MSSCTOKEN
     }
     url = settings.MSSCURL
-    url += '/machines?$filter=id+eq+\'' + DeviceID + '\''
+    url += '/machines?$filter=ComputerDnsName+eq+\'' + machineId + '\''
     if options.verbose:
         print("U) Contacting " + url + " ...")
     sslcontext = ssl.create_default_context()
@@ -459,7 +457,7 @@ def queryLogonUsers(DeviceID, options, MSSCTOKEN, GRAPHTOKEN):
         if options.verbose:
             print("U) Got a MSSC JSON response package:")
             pprint.pprint(jsonResponse)
-        machineId = jsonResponse[0]['aadDeviceId']
+        machineId = jsonResponse[0]['id']
     except urllib.error.HTTPError:
         pass
     if machineId:
