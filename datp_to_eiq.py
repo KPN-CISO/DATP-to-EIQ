@@ -157,6 +157,14 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             else:
                 entity.set_entity(entity.ENTITY_SIGHTING)
                 eventType = 'Sighting'
+            if 'high' in severities:
+                impact = 'high'
+            elif 'medium' in severities:
+                impact = 'medium'
+            elif 'low' in severities:
+                impact = 'low'
+            else:
+                impact = 'info'
             entity.set_entity_source(settings.EIQSOURCE)
             entity.set_entity_observed_time(entityTime + 'Z')
             entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
@@ -325,7 +333,9 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                 status = 'detected'
             else:
                 status = ', '.join(remediations)
-            title += 'Status: ' + status + ' - ' + settings.TITLETAG
+            title += 'Status: ' + status + ' - '
+            title += 'Impact: ' + impact + ' - '
+            title += settings.TITLETAG
             entity.set_entity_title(title)
             description = '<h1>Description of ' + eventType + '</h1>'
             description += '<table style="border: 1px solid black;">'
