@@ -531,7 +531,7 @@ def queryUser(email, options, GRAPHTOKEN):
         handle = addomain + '\\' + userName
         person['handle'].add(handle)
     if 'mail' in jsonResponse:
-        person['mail'].add(jsonResponse['mail'])
+        person['mail'].add(jsonResponse['mail'].lower())
     if 'businessPhones' in jsonResponse:
         if jsonResponse['businessPhones']:
             numbers = jsonResponse['businessPhones']
