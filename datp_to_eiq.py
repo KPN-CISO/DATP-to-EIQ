@@ -40,6 +40,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
         for machineName in machineNames:
             entityTime = str(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
             actors = set()
+            emails = set()
             hostnames = set()
             ipv4s = set()
             ipv6s = set()
@@ -292,6 +293,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                                               confidence=confidence,
                                               link_type=link_type)
                     for email in logonUser['mail']:
+                        emails.add(email)
                         eiqtype = entity.OBSERVABLE_EMAIL
                         classification = entity.CLASSIFICATION_UNKNOWN
                         confidence = entity.CONFIDENCE_HIGH
@@ -390,6 +392,12 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             description += 'padding: 4px; text-align: center; font-weight: bold;">'
             description += 'System User(s)'
             description += '</th>'
+            for email in emails:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left;">'
+                description += email
+                description += '</td></tr>'
             for handle in handles:
                 description += '<tr>'
                 description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
