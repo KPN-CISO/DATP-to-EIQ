@@ -76,6 +76,20 @@ GRAPHCLIENTSECRET = '<client-secret>'
 GRAPHTOKENURI = 'https://login.microsoftonline.com/%s/oauth2/token' % (TENANTID)
 GRAPHSSLVERIFY = True
 
+# Settings for notifications
+
+# If all of these variables are set, email notifications will be sent to
+# the EMAILTO address for all 'medium' and 'high' events.
+# This can be useful for alerting/tracking purposes.
+#
+# EMAILSERVER           [Optional] FQDN of email server to use
+# EMAILFROM             [Optional] Sender address for medium/high notifications
+# EMAILTO               [Optional] Recipient of medium/high notifications
+
+#EMAILSERVER = 'localhost'
+#EMAILFROM = 'datp-to-eiq@yourcompany.com'
+#EMAILTO = '<your-recipient'
+
 # Settings for EclecticIQ
 
 # Pick the right URL, e.g.: 'https://myeiqinstance.localdomain'.
