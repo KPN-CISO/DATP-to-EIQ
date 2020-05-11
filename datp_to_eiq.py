@@ -469,7 +469,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                         smtp.send_message(msg)
                     except IOError:
                         print("E) An error occurred sending e-mail!")
-                        raise                    
+                        raise
                     if options.verbose:
                         print("U) Email:")
                         print(content)

@@ -86,8 +86,8 @@ GRAPHSSLVERIFY = True
 # EMAILFROM             [Optional] Sender address for medium/high notifications
 # EMAILTO               [Optional] Recipient of medium/high notifications
 
-#EMAILSERVER = 'localhost'
-#EMAILFROM = 'datp-to-eiq@yourcompany.com'
+#EMAILSERVER = '<your-email-server>'
+#EMAILFROM = '<datp-to-eiq@yourcompany.com>'
 #EMAILTO = '<your-recipient'
 
 # Settings for EclecticIQ
