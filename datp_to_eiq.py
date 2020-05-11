@@ -150,7 +150,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             entity with all relevant information
             '''
             entity = eiqjson.EIQEntity()
-            if ('low' or 'medium' or 'high') in severities:
+            if ('medium' or 'high') in severities:
                 entity.set_entity(entity.ENTITY_INCIDENT)
                 eventType = 'Incident'
             else:
