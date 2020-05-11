@@ -364,7 +364,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             description += '<table style="border: 1px solid black;">'
             description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
             description += 'padding: 4px; text-align: center; font-weight: bold;">'
-            description += 'Detection Source(s)'
+            description += 'Detected By'
             description += '</th>'
             for detectionSource in detectionSources:
                 description += '<tr>'
