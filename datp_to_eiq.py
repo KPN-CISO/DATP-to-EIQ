@@ -158,6 +158,9 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             entity with all relevant information
             '''
             entity = eiqjson.EIQEntity()
+            if ('quarantined' or 'removed') in remediations:
+                entity.set_entity(entity.ENTITY_SIGHTING)
+                eventType = 'Sighting'
             if ('info' or 'low') in severities:
                 entity.set_entity(entity.ENTITY_SIGHTING)
                 eventType = 'Sighting'
@@ -165,9 +168,6 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                 entity.set_entity(entity.ENTITY_INCIDENT)
                 eventType = 'Incident'
             else:
-                entity.set_entity(entity.ENTITY_SIGHTING)
-                eventType = 'Sighting'
-            if ('quarantined' or 'removed') in remediations:
                 entity.set_entity(entity.ENTITY_SIGHTING)
                 eventType = 'Sighting'
             if 'high' in severities:
@@ -466,7 +466,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             '''
             Send out a warning and auto-patch the informational and low alerts
             '''
-            if ('info' or 'low') in impact:
+            if ('info' or 'low') in severities:
                 jsonIndicators = []
                 for alertId in alertIds:
                     jsonIndicator = dict()
@@ -531,21 +531,19 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                                 try:
                                     if options.verbose:
                                         print("U) Sending email ...")
+                                        print(content)
                                     smtp = smtplib.SMTP(settings.EMAILSERVER)
                                     #smtp.send_message(msg)
                                 except IOError:
                                     print("E) An error occurred sending e-mail!")
                                     raise
-                            if options.verbose:
-                                print("U) Email:")
-                                print(content)
                         time.sleep(0.6)
                     if options.verbose:
                         print("Slept a bit to not overload the API ...")
             '''
             Send out an alerting/tracking email for medium and high events
             '''
-            if ('medium' or 'high') in impact:
+            if ('medium' or 'high') in severities:
                 knownAlerts = set()
                 if os.path.isfile(settings.EMAILALERTDB):
                     with open(settings.EMAILALERTDB, 'rb') as alertFile:
@@ -583,14 +581,12 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                                 try:
                                     if options.verbose:
                                         print("U) Sending email ...")
+                                        print(content)
                                     smtp = smtplib.SMTP(settings.EMAILSERVER)
                                     smtp.send_message(msg)
                                 except IOError:
                                     print("E) An error occurred sending e-mail!")
                                     raise
-                            if options.verbose:
-                                print("U) Email:")
-                                print(content)
                 with open(settings.EMAILALERTDB, 'wb') as alertFile:
                     pickle.dump(knownAlerts, alertFile)
     return(entityList)
