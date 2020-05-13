@@ -620,7 +620,10 @@ def queryLogonUsers(machineId, options, MSSCTOKEN, GRAPHTOKEN):
         if options.verbose:
             print("U) Got a MSSC JSON response package:")
             pprint.pprint(jsonResponse)
-        machineId = jsonResponse[0]['id']
+        if len(jsonResponse) > 0:
+            machineId = jsonResponse[0]['id']
+        else:
+            machineId = None
     except urllib.error.HTTPError:
         pass
     if machineId:
