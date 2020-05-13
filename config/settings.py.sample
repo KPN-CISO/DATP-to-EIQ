@@ -78,17 +78,24 @@ GRAPHSSLVERIFY = True
 
 # Settings for notifications
 
-# If all of these variables are set, email notifications will be sent to
-# the EMAILTO address for all 'medium' and 'high' events.
-# This can be useful for alerting/tracking purposes.
-#
 # EMAILSERVER           [Optional] FQDN of email server to use
 # EMAILFROM             [Optional] Sender address for medium/high notifications
-# EMAILTO               [Optional] Recipient of medium/high notifications
+# EMAILINFORMUSERS      [Optional] Default: False - auto-inform users of 'informational' and
+#                                  'low' alerts on their systems
+# EMAILINFORMTICKET     [Optional] Default: False - auto-inform your ticketing system by
+#                                  email of 'medium' and 'high' alerts
+# EMAILINFORMADDRESS    [Optional] Recipient address of medium/high notifications
+# EMAILALERTDB          [Optional] Python Pickle'd DB of alerts for which an email
+#                                  has already been sent out (no duplicate emails)
+# AUTOPATCH             [Optional] Automatically resolve 'low' and 'info' alerts in MSSC
 
 #EMAILSERVER = '<your-email-server>'
 #EMAILFROM = '<datp-to-eiq@yourcompany.com>'
-#EMAILTO = '<your-recipient'
+#EMAILINFORMUSERS = False
+#EMAILINFORMTICKET = False
+#EMAILINFORMADDRESS = '<your-ticket-recipient>'
+#EMAILALERTDB = 'alerts.db'
+#AUTOPATCH = False
 
 # Settings for EclecticIQ
 
