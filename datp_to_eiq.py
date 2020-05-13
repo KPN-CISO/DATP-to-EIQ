@@ -150,10 +150,16 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             entity with all relevant information
             '''
             entity = eiqjson.EIQEntity()
-            if ('medium' or 'high') in severities:
+            if ('info' or 'low') in severities:
+                entity.set_entity(entity.ENTITY_SIGHTING)
+                eventType = 'Sighting'
+            elif ('medium' or 'high') in severities:
                 entity.set_entity(entity.ENTITY_INCIDENT)
                 eventType = 'Incident'
             else:
+                entity.set_entity(entity.ENTITY_SIGHTING)
+                eventType = 'Sighting'
+            if ('quarantined' or 'removed') in remediations:
                 entity.set_entity(entity.ENTITY_SIGHTING)
                 eventType = 'Sighting'
             if 'high' in severities:
