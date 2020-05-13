@@ -52,6 +52,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             sha1s = set()
             sha256s = set()
             threatNames = set()
+            wdatpLinks = set()
             urls = set()
             remediations = set()
             categories = set()
@@ -88,6 +89,8 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                             hostnames.add(alert['ComputerDnsName'].lower())
                         if alert['Description']:
                             alertDescriptions.add(alert['Description'])
+                        if alert['IncidentLinkToWDATP']:
+                            wdatpLinks.add(alert['IncidentLinkToWDATP'])
                         if alert['InternalIPv4List']:
                             ips = alert['InternalIPv4List'].split(';')
                             if isinstance(ips, list):
@@ -427,6 +430,21 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                 description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
                 description += 'padding: 4px; text-align: left;">'
                 description += investigationState
+                description += '</td></tr>'
+            description += '</table>'
+            description += '<br />'
+            description += '<table style="border: 1px solid black;">'
+            description += '<tr><th style="border: 1px solid black; background-color: #000000; color: #ffffff; '
+            description += 'padding: 4px; text-align: center; font-weight: bold;">'
+            description += 'Related Security Center Incident URLs'
+            description += '</th>'
+            for wdatpLink in wdatpLinks:
+                description += '<tr>'
+                description += '<td style="border: 1px solid black; background-color: #ffffff; color: #000000; '
+                description += 'padding: 4px; text-align: left;">'
+                description += '<a href=\"' + wdatpLink + '\" target=\"_blank\" rel=\"noopener noreferrer\"">'
+                description += wdatpLink
+                description += '</a>'
                 description += '</td></tr>'
             description += '</table>'
             description += '<br />'
