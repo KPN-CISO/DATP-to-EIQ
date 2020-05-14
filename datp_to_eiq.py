@@ -466,6 +466,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             '''
             Send out a warning and auto-patch the informational and low alerts
             '''
+            print('Severities:',severities,'Impact:',impact)
             if ('info' or 'low') in severities:
                 jsonIndicators = []
                 for alertId in alertIds:
