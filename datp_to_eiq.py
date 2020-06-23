@@ -161,23 +161,22 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             if ('quarantined' or 'removed') in remediations:
                 entity.set_entity(entity.ENTITY_SIGHTING)
                 eventType = 'Sighting'
-            if ('info' or 'low') in severities:
-                entity.set_entity(entity.ENTITY_SIGHTING)
-                eventType = 'Sighting'
-            elif ('medium' or 'high') in severities:
-                entity.set_entity(entity.ENTITY_INCIDENT)
-                eventType = 'Incident'
-            else:
-                entity.set_entity(entity.ENTITY_SIGHTING)
-                eventType = 'Sighting'
             if 'high' in severities:
+                entity.set_entity(entity.ENTITY_INCIDENT)
                 impact = 'high'
+                eventType = 'Incident'
             elif 'medium' in severities:
+                entity.set_entity(entity.ENTITY_INCIDENT)
                 impact = 'medium'
+                eventType = 'Incident'
             elif 'low' in severities:
+                entity.set_entity(entity.ENTITY_SIGHTING)
                 impact = 'low'
+                eventType = 'Sighting'
             else:
+                entity.set_entity(entity.ENTITY_SIGHTING)
                 impact = 'info'
+                eventType = 'Sighting'
             entity.set_entity_source(settings.EIQSOURCE)
             entity.set_entity_observed_time(entityTime + 'Z')
             entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
@@ -466,7 +465,6 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             '''
             Send out a warning and auto-patch the informational and low alerts
             '''
-            print('Severities:',severities,'Impact:',impact)
             if ('info' or 'low') in severities:
                 jsonIndicators = []
                 for alertId in alertIds:
@@ -544,7 +542,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
             '''
             Send out an alerting/tracking email for medium and high events
             '''
-            if ('medium' or 'high') in severities:
+            if (('medium' or 'high') in severities) or (impact == 'high' or impact == 'medium'):
                 knownAlerts = set()
                 if os.path.isfile(settings.EMAILALERTDB):
                     with open(settings.EMAILALERTDB, 'rb') as alertFile:
@@ -698,7 +696,8 @@ def queryUser(email, options, GRAPHTOKEN):
         handle = addomain + '\\' + userName
         person['handle'].add(handle)
     if 'mail' in jsonResponse:
-        person['mail'].add(jsonResponse['mail'].lower())
+        if jsonResponse['mail']:
+            person['mail'].add(jsonResponse['mail'].lower())
     if 'businessPhones' in jsonResponse:
         if jsonResponse['businessPhones']:
             numbers = jsonResponse['businessPhones']
