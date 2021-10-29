@@ -152,7 +152,10 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                         if alert['LogOnUsers']:
                             handles.add(alert['LogOnUsers'].lower())
                         if alert['FileName'] and alert['FilePath']:
-                            files.add(alert['FilePath']+'\\'+alert['FileName'])
+                            if ((alert['FilePath'].split('/')[-1] == alert['FileName']) or (alert['FilePath'].split('\\')[-1] == alert['FileName'])):
+                                files.add(alert['FilePath'])
+                            else:
+                                files.add(alert['FilePath']+'\\'+alert['FileName'])
             '''
             All machine information collected, now build the EclecticIQ
             entity with all relevant information
@@ -179,7 +182,7 @@ def transform(alerts, options, DATPTOKEN, MSSCTOKEN, GRAPHTOKEN):
                 eventType = 'Sighting'
             entity.set_entity_source(settings.EIQSOURCE)
             entity.set_entity_observed_time(entityTime + 'Z')
-            entity.set_entity_confidence(entity.CONFIDENCE_HIGH)
+            entity.set_entity_confidence(entity.CONFIDENCE_MEDIUM)
             entity.set_entity_tlp('amber')
             for hostname in hostnames:
                 hostnames.add(hostname)
